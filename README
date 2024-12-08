@@ -1,8 +1,15 @@
-s-bsdiff, a mutation of bsdiff
+s-bsdipa, a mutation of bsdiff
 ==============================
 
 Colin Percival's bsdiff, imported from FreeBSD and mutated.
+Please see header comment of lib/s-bsdipa-lib.h for more on that.
+Please see top of lib/makefile for build instructions.
 
+The general thought and expectation is that the entire lib/
+subdirectory is taken and integrated into the project of desire.
+Please see in there for more.
+
+Contact: steffen at sdaoden dot eu.
 
 The file naive-differences-of-executable-code.pdf is an article of
 Colin Percival on bsdiff.
