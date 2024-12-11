@@ -1,0 +1,4 @@
+*.o
+*.a
+lib/s-bsdipa-config.h
+s-bsdipa/s-bsdipa
