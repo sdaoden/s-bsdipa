@@ -5,12 +5,15 @@
  *@ The functions have s_BSDIPA_IO_LINKAGE storage, or static if not defined.
  *@ There may be additional static helper functions.
  *@
- *@ Note:
+ *@ Notes:
  *@ - it is up to the user to provide according linker flags, like -lz!
  *@ - this is not a step-by-step filter: a complete s_bsdipa_diff() result
  *@   is serialized, or serialized data is turned into a complete data set
  *@   that then can be fed into s_bsdipa_patch().
  *@   (A custom I/O (compression) layer may be less memory hungry.)
+ *@ - s_BSDIPA_IO == s_BSDIPA_IO_ZLIB:
+ *@   -- s_BSDIPA_IO_ZLIB_LEVEL may be defined as the "level" argument of
+ *@      zlib's deflateInit() (default is 9).
  *@
  *@ Remarks:
  *@ - code requires ISO STD C99 (for now).
@@ -155,6 +158,10 @@ jleave:
 
 # include <zlib.h>
 
+# ifndef s_BSDIPA_IO_ZLIB_LEVEL
+#  define s_BSDIPA_IO_ZLIB_LEVEL 9
+# endif
+
  /* For testing purposes */
 # define s__BSDIPA_IO_LIMIT (INT32_MAX - 1)
 
@@ -195,7 +202,7 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 	zs.zfree = &s__bsdipa_io_free;
 	zs.opaque = (void*)&dcp->dc_mem;
 
-	switch(deflateInit(zsp, 9)){
+	switch(deflateInit(zsp, s_BSDIPA_IO_ZLIB_LEVEL)){
 	case Z_OK: break;
 	case Z_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jdone;
 	default: rv = s_BSDIPA_INVAL; goto jdone;
