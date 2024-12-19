@@ -163,15 +163,25 @@ static void s__bsdipa_io_free(voidpf my_cookie, voidpf dat);
 
 s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
 s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *user_cookie){
-	size_t const olen = 4096 * 16;
-
 	z_stream zs;
 	struct s_bsdipa_ctrl_chunk *ccp;
 	char x;
-	s_bsdipa_off_t diflen, extlen;
 	z_streamp zsp;
 	enum s_bsdipa_state rv;
 	uint8_t *obuf;
+	size_t olen;
+	s_bsdipa_off_t diflen, extlen;
+
+	diflen = dcp->dc_diff_len;
+	extlen = dcp->dc_extra_len;
+
+	olen = dcp->dc_ctrl_len + diflen + extlen; /* Guaranteed to work! */
+	if(olen <= 1000 * 150)
+		olen = 4096 * 4;
+	else if(olen <= 1000 * 1000)
+		olen = 4096 * 31;
+	else
+		olen = 4096 * 244;
 
 	obuf = s__bsdipa_io_alloc((void*)&dcp->dc_mem, 1, olen);
 	if(obuf == NULL){
@@ -194,8 +204,6 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 	zsp->next_out = obuf;
 	zsp->avail_out = (uInt)olen;
 	ccp = dcp->dc_ctrl;
-	diflen = dcp->dc_diff_len;
-	extlen = dcp->dc_extra_len;
 
 	for(x = 0;;){
 		int flusht;
