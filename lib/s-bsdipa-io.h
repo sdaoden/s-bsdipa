@@ -173,11 +173,22 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 	z_stream zs;
 	struct s_bsdipa_ctrl_chunk *ccp;
 	char x;
-	z_streamp zsp;
 	enum s_bsdipa_state rv;
 	uint8_t *obuf;
 	size_t olen;
 	s_bsdipa_off_t diflen, extlen;
+	z_streamp zsp;
+
+	zsp = &zs;
+	zs.zalloc = &s__bsdipa_io_alloc;
+	zs.zfree = &s__bsdipa_io_free;
+	zs.opaque = (void*)&dcp->dc_mem;
+
+	switch(deflateInit(zsp, s_BSDIPA_IO_ZLIB_LEVEL)){
+	case Z_OK: break;
+	case Z_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jleave;
+	default: rv = s_BSDIPA_INVAL; goto jleave;
+	}
 
 	diflen = dcp->dc_diff_len;
 	extlen = dcp->dc_extra_len;
@@ -193,19 +204,7 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 	obuf = s__bsdipa_io_alloc((void*)&dcp->dc_mem, 1, olen);
 	if(obuf == NULL){
 		rv = s_BSDIPA_NOMEM;
-		goto jleave;
-	}
-
-	/* make deflateEnd() callable */
-	zsp = &zs;
-	zs.zalloc = &s__bsdipa_io_alloc;
-	zs.zfree = &s__bsdipa_io_free;
-	zs.opaque = (void*)&dcp->dc_mem;
-
-	switch(deflateInit(zsp, s_BSDIPA_IO_ZLIB_LEVEL)){
-	case Z_OK: break;
-	case Z_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jdone;
-	default: rv = s_BSDIPA_INVAL; goto jdone;
+		goto jdone;
 	}
 
 	zsp->next_out = obuf;
@@ -291,9 +290,10 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 jeof:
 	rv = (*hook)(user_cookie, NULL, -1);
 jdone:
-	deflateEnd(zsp);
+	if(obuf != NULL)
+		s__bsdipa_io_free((void*)&dcp->dc_mem, obuf);
 
-	s__bsdipa_io_free((void*)&dcp->dc_mem, obuf);
+	deflateEnd(zsp);
 jleave:
 	return rv;
 }
