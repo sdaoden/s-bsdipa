@@ -1,11 +1,13 @@
 #@ Makefile for s-bsdipa-lib (libsbsdipa.a).
-#@  - pass s_BSDIPA_32 non-empty for 32-bit file size limits and control data.
+#@  - pass s_BSDIPA_32 non-empty for 31-bit file size limits and control data.
+#@    (This also almost halves memory usage.)
 #@  - pass s_BSDIPA_MAGIC_WINDOW=UINT to define the built-in default for
 #@    s_bsdipa_diff_ctx::dc_magic_window (see there).
 #@ [- pass s_BSDIPA_CFLAGS='$(SUFX)' for lots of compiler flags.]
+#@ - pass -DNDEBUG via $CFLAGS to disable some redundant expensive cleanups.
 #@
 #@ For example:
-#@	CFLAGS='-O1 -g' make s_BSDIPA_32=y s_BSDIPA_CFLAGS='$(SUFX)' all
+#@	CFLAGS='-O1 -DNDEBUG' make s_BSDIPA_32=y s_BSDIPA_CFLAGS='$(SUFX)' all
 
 LIB = libsbsdipa.a
 VERSION = 0.5.0
@@ -45,6 +47,8 @@ SRCS = s-bsdiff.c \
 	s-bspatch.c
 OBJS = $(SRCS:.c=.o)
 
+# XXX Paul Smith (GNU make): "$(<:.c=.o) is not a good idea since $@ will not match then".
+# (We yet keep it since that affects only libdivsufsort which is only upstream.)
 .SUFFIXES: .o .c .y
 .c.o:
 	$(CC) $(CFLAGS) -o $(<:.c=.o) -c $<
