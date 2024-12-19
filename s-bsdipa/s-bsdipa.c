@@ -1,5 +1,5 @@
 /*@ s-bsdipa: create binary patch or restored file.
- *@ With C preprocessor NDEBUG lesser memory etc cleanup is performed.
+ *@ (See ../lib/ for more.)
  *
  * Copyright (c) 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -46,6 +46,7 @@
 
 #include "s-bsdipa-lib.h"
 #define s_BSDIPA_IO s_BSDIPA_IO_ZLIB
+/*#define s_BSDIPA_IO_ZLIB_LEVEL 9*/
 #include "s-bsdipa-io.h"
 
 #ifndef O_BINARY
@@ -68,13 +69,14 @@
 
 /* */
 #if !a_STATS
-#  define a_CLOCK(X)
+# define a_RESLEN(X)
+# define a_CLOCK(X)
 #else
+# define a_RESLEN(X) a_reslen += X
 # ifdef a_CLOCK_TS
 #  define a_CLOCK_T struct timespec
 #  define a_CLOCK_SEC(X) (X)->tv_sec
-#  define a_CLOCK_SSEC(X) (X)->tv_nsec
-#  define a_CLOCK_SSFMT "09"
+#  define a_CLOCK_SSEC_2_1000th(X) ((X)->tv_nsec / (1000000000l / 1000))
 #  define a_CLOCK(X) clock_gettime(CLOCK_MONOTONIC, X)
 #  define a_CLOCK_SUB(X, Y) \
 	(X)->tv_sec -= (Y)->tv_sec;\
@@ -86,8 +88,7 @@
 # else
 #  define a_CLOCK_T struct timeval
 #  define a_CLOCK_SEC(X) (X)->tv_sec
-#  define a_CLOCK_SSEC(X) (X)->tv_usec
-#  define a_CLOCK_SSFMT "06"
+#  define a_CLOCK_SSEC_2_1000th(X) ((X)->tv_usec / (1000000l / 1000))
 #  define a_CLOCK(X) gettimeofday(X, NULL)
 #  define a_CLOCK_SUB(X, Y) \
 	(X)->tv_sec -= (Y)->tv_sec;\
@@ -106,8 +107,10 @@ struct a_mem{
 	void *m_vp;
 };
 
+/* a_mem_curr only !NDEBUG */
 struct a_mem *a_mem_list;
-static size_t a_mem_curr, a_mem_peek, a_mem_all, a_mem_allno;
+static size_t a_mem_peek, a_mem_all, a_mem_allno, a_mem_curr;
+static s_bsdipa_off_t a_reslen;
 #endif
 
 #if a_STATS
@@ -221,8 +224,11 @@ a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len){
 	if(len <= 0){
 		if(fflush(fp) == EOF)
 			rv = s_BSDIPA_INVAL;
-	}else if(fwrite(dat, len, 1, fp) != 1)
-		rv = s_BSDIPA_INVAL;
+	}else{
+		a_RESLEN(len);
+		if(fwrite(dat, len, 1, fp) != 1)
+			rv = s_BSDIPA_INVAL;
+	}
 
 	return rv;
 }
@@ -241,7 +247,7 @@ main(int argc, char *argv[]){
 	};
 
 #if a_STATS
-	a_CLOCK_T ts, te;
+	a_CLOCK_T ts, te, ts2, te2;
 #endif
 	union{
 		struct s_bsdipa_memory_ctx m;
@@ -341,12 +347,17 @@ main(int argc, char *argv[]){
 		}else{
 			int e;
 
+			a_CLOCK(&ts2);
+
 			switch(s_bsdipa_io_write(&c.d, &a_hook_write, pfp)){
 			default: e = 0; break;
 			case s_BSDIPA_FBIG: e = EFBIG; break;
 			case s_BSDIPA_NOMEM: e = ENOMEM; break;
 			case s_BSDIPA_INVAL: e = EINVAL; break;
 			}
+
+			a_CLOCK(&te2);
+
 			if(e != 0){
 				errno = e;
 				goto jioerr;
@@ -372,12 +383,16 @@ main(int argc, char *argv[]){
 			c.p.pc_patch_dat += sizeof(a_MAGIC) -1;
 			c.p.pc_patch_len -= sizeof(a_MAGIC) -1;
 
+			a_CLOCK(&ts2);
+
 			switch(s_bsdipa_io_read(&c.p)){
 			default: e = 0; break;
 			case s_BSDIPA_FBIG: e = EFBIG; break;
 			case s_BSDIPA_NOMEM: e = ENOMEM; break;
 			case s_BSDIPA_INVAL: e = EINVAL; break;
 			}
+
+			a_CLOCK(&te2);
 
 			c.p.pc_patch_dat -= sizeof(a_MAGIC) -1;
 			c.p.pc_patch_len += sizeof(a_MAGIC) -1;
@@ -402,6 +417,7 @@ main(int argc, char *argv[]){
 		s = s_bsdipa_patch(&c.p);
 
 		a_CLOCK(&te);
+		a_RESLEN(c.p.pc_restored_len);
 
 		if(s != s_BSDIPA_OK)
 			goto jes;
@@ -486,11 +502,21 @@ jioerr:
 #if a_STATS
 	if(rv == a_EX_OK){
 		a_CLOCK_SUB(&te, &ts);
+		a_CLOCK_SUB(&te2, &ts2);
 		fprintf(stderr,
 			/* (xxx since we print difference long should be ok)*/
-			"# %ld:%" a_CLOCK_SSFMT "ld seconds; Mem all=%zu peek=%zu curr=%zu no=%zu\n",
-			(long)a_CLOCK_SEC(&te), (long)a_CLOCK_SSEC(&te),
-			a_mem_all, a_mem_peek, a_mem_curr, a_mem_allno);
+			"# %ld result bytes | %zu allocs: all=%zu peek=%zu"
+# ifndef NDEBUG
+				" curr=%zu"
+# endif
+			" bytes\n# Algorithm %ld:%03ld secs, I/O %ld:%03ld secs\n",
+			(long)a_reslen,
+			a_mem_allno, a_mem_all, a_mem_peek,
+# ifndef NDEBUG
+			a_mem_curr,
+# endif
+			(long)a_CLOCK_SEC(&te), (long)a_CLOCK_SSEC_2_1000th(&te),
+			(long)a_CLOCK_SEC(&te2), (long)a_CLOCK_SSEC_2_1000th(&te2));
 	}
 #endif
 
