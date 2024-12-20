@@ -1,4 +1,4 @@
-/*@ s-bsdipa: create binary patch or restored file.
+/*@ s-bsdipa: create or apply binary difference patch.
  *@ (See ../lib/ for more.)
  *
  * Copyright (c) 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
@@ -524,7 +524,7 @@ jioerr:
 jeuse:
 	fprintf(stderr,
 		a_NAME " (" s_BSDIPA_IO_NAME "; " s_BSDIPA_VERSION
-			"): create or apply file difference patch\n"
+			"): create or apply binary difference patch\n"
 		"\n"
 		"  " a_NAME " [!]patch    after  patch restored\n"
 		"  " a_NAME " [!]diff     before after patch\n"
