@@ -19,7 +19,6 @@
  *@ - code requires ISO STD C99 (for now).
  *
  * Copyright (c) 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
- *
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
