@@ -125,8 +125,8 @@ s_bsdipa_io_read(struct s_bsdipa_patch_ctx *pcp){
 		goto jleave;
 	}
 
-	rd = (pcp->pc_mem.mc_alloc != NULL) ? (*pcp->pc_mem.mc_alloc)((size_t)pl)
-			: (*pcp->pc_mem.mc_custom_alloc)(pcp->pc_mem.mc_custom_cookie, (size_t)pl);
+	rd = (uint8_t*)((pcp->pc_mem.mc_alloc != NULL) ? (*pcp->pc_mem.mc_alloc)((size_t)pl)
+			: (*pcp->pc_mem.mc_custom_alloc)(pcp->pc_mem.mc_custom_cookie, (size_t)pl));
 	if(rd == NULL){
 		rv = s_BSDIPA_NOMEM;
 		goto jleave;
@@ -200,7 +200,7 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 	else
 		olen = 4096 * 244;
 
-	obuf = s__bsdipa_io_alloc((void*)&dcp->dc_mem, 1, olen);
+	obuf = (uint8_t*)s__bsdipa_io_alloc((void*)&dcp->dc_mem, 1, olen);
 	if(obuf == NULL){
 		rv = s_BSDIPA_NOMEM;
 		goto jdone;
@@ -345,7 +345,7 @@ s_bsdipa_io_read(struct s_bsdipa_patch_ctx *pcp){
 	reslen = pcp->pc_header.h_ctrl_len + pcp->pc_header.h_diff_len + pcp->pc_header.h_extra_len;
 
 	pcp->pc_restored_len = reslen;
-	pcp->pc_restored_dat = s__bsdipa_io_alloc(&pcp->pc_mem, 1, reslen);
+	pcp->pc_restored_dat = (uint8_t*)s__bsdipa_io_alloc(&pcp->pc_mem, 1, reslen);
 	if(pcp->pc_restored_dat == NULL){
 		rv = s_BSDIPA_NOMEM;
 		goto jdone;

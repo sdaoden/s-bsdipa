@@ -198,13 +198,13 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 	rv = s_BSDIPA_NOMEM;
 
 	dcp->dc_extra_dat =
-		extrap = (*dcp->dc_mem.mc_custom_alloc)(dcp->dc_mem.mc_custom_cookie, (size_t)(beflen + 1));/*XXX +1*/
+		extrap = (uint8_t*)(*dcp->dc_mem.mc_custom_alloc)(dcp->dc_mem.mc_custom_cookie, (size_t)(beflen + 1));
 	if(dcp->dc_extra_dat == NULL)
 		goto jleave;
 	/* Let's share that buffer */
 	dcp->dc_diff_dat = diffp = &dcp->dc_extra_dat[(size_t)(beflen + 1)];
 
-	Ip = (*dcp->dc_mem.mc_custom_alloc)(dcp->dc_mem.mc_custom_cookie,
+	Ip = (saidx_t*)(*dcp->dc_mem.mc_custom_alloc)(dcp->dc_mem.mc_custom_cookie,
 			(size_t)(aftlen + 1) * sizeof(saidx_t));
 	if(Ip == NULL)
 		goto jleave;
@@ -309,8 +309,9 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 				/* */
 				if(ccpp == NULL || --ctrlno == 0){
 					/* Do not use: sizeof(struct s_bsdipa_ctrl_triple) * a_BSDIPA_CTRL_NO */
-					ccp = (*dcp->dc_mem.mc_custom_alloc)(dcp->dc_mem.mc_custom_cookie,
-							(sizeof(struct s_bsdipa_ctrl_chunk) +
+					ccp = (struct s_bsdipa_ctrl_chunk*)(*dcp->dc_mem.mc_custom_alloc)
+							(dcp->dc_mem.mc_custom_cookie,
+							 (sizeof(struct s_bsdipa_ctrl_chunk) +
 								(3 * sizeof(s_bsdipa_off_t) * a_BSDIPA_CTRL_NO)));
 					if(ccp == NULL)
 						goto jdone;

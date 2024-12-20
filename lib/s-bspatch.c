@@ -197,7 +197,8 @@ s_bsdipa_patch(struct s_bsdipa_patch_ctx *pcp){
 
 	pcp->pc_restored_len = pcp->pc_header.h_before_len;
 
-	pcp->pc_restored_dat = (*pcp->pc_mem.mc_custom_alloc)(pcp->pc_mem.mc_custom_cookie, pcp->pc_restored_len);
+	pcp->pc_restored_dat = (uint8_t*)(*pcp->pc_mem.mc_custom_alloc)(pcp->pc_mem.mc_custom_cookie,
+			pcp->pc_restored_len);
 	if(pcp->pc_restored_dat == NULL)
 		goto jleave;
 

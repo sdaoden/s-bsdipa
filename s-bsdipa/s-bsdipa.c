@@ -194,7 +194,7 @@ a_mmap(int fd, char const *file, char const *id, uint64_t *lenp, uint8_t const *
 	}
 
 	*lenp = (uint64_t)xoff;
-	*datp = mmap(NULL, (size_t)xoff + 1, PROT_READ, MAP_SHARED, fd, 0);
+	*datp = (uint8_t const*)mmap(NULL, (size_t)xoff + 1, PROT_READ, MAP_SHARED, fd, 0);
 	if(*datp == MAP_FAILED){
 		emsg = "cannot memory map";
 		goto jerr;
@@ -219,7 +219,7 @@ a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len){
 	enum s_bsdipa_state rv;
 
 	rv = s_BSDIPA_OK;
-	fp = cookie;
+	fp = (FILE*)cookie;
 
 	if(len <= 0){
 		if(fflush(fp) == EOF)
