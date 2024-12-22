@@ -38,6 +38,10 @@
 
 #include <s-bsdipa-lib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Compression types (preprocessor so sources can adapt) */
 #define s_BSDIPA_IO_NONE 0
 #define s_BSDIPA_IO_ZLIB 1
@@ -428,5 +432,8 @@ s__bsdipa_io_free(voidpf my_cookie, voidpf dat){
 # error Unknown s_BSDIPA_IO value
 #endif
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* !s_BSDIPA_IO_H */
 /* s-itt-mode */

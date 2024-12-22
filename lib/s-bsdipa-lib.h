@@ -116,6 +116,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Integer type for header and control block triples: file size / offsets.
  * For easy overflow avoidance (left hand value) we also test >s_BSDOFF_MAX-1.
  * The real limit is even smaller (patch preparation ~SIZE_MAX/sizeof(s_bsdipa_off_t)). */
@@ -251,5 +255,8 @@ enum s_bsdipa_state s_bsdipa_patch(struct s_bsdipa_patch_ctx *pcp);
 /* Release result memory; to be called even in case of errors. */
 void s_bsdipa_patch_free(struct s_bsdipa_patch_ctx *pcp);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* !s_BSDIPA_LIB_H */
 /* s-itt-mode */
