@@ -47,6 +47,8 @@
 #include "s-bsdipa-lib.h"
 #define s_BSDIPA_IO s_BSDIPA_IO_ZLIB
 /*#define s_BSDIPA_IO_ZLIB_LEVEL 9*/
+#define s_BSDIPA_IO_READ
+#define s_BSDIPA_IO_WRITE
 #include "s-bsdipa-io.h"
 
 #ifndef O_BINARY
