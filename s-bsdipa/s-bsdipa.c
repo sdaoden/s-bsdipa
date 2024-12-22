@@ -17,8 +17,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#define a_CONTACT "Steffen Nurpmeso <steffen@sdaoden.eu>"
-
 /* Say 0 to disable */
 #define a_STATS 1
 
@@ -550,7 +548,7 @@ jeuse:
 #ifdef s_BSDIPA_32
 		". Reduced overhead: 32-bit file sizes and patch control data.\n"
 #endif
-		". Bugs/Contact via " a_CONTACT "\n");
+		". Bugs/Contact via " s_BSDIPA_CONTACT ".\n");
 	rv = a_EX_USAGE;
 	goto jleave;
 

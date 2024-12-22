@@ -10,7 +10,6 @@
 #@	CFLAGS='-O1 -DNDEBUG' make s_BSDIPA_32=y s_BSDIPA_CFLAGS='$(SUFX)' all
 
 LIB = libsbsdipa.a
-VERSION = 0.5.0
 LIBDIVSUFSORT = libdivsufsort
 
 SUFWW = #-Weverything
@@ -55,15 +54,10 @@ OBJS = $(SRCS:.c=.o)
 
 all: $(LIB)
 $(CONFIGH):
-	{ \
-	echo '#ifndef s__BSDIPA_CONFIG_H';\
-	echo '#define s__BSDIPA_CONFIG_H';\
-	echo '#define s_BSDIPA_VERSION "'$(VERSION)'"';\
-	[ -n "$(s_BSDIPA_32)" ] && echo '#define s_BSDIPA_32' || echo '#undef s_BSDIPA_32';\
-	[ -n "$(s_BSDIPA_MAGIC_WINDOW)" ] && echo '#define s_BSDIPA_MAGIC_WINDOW $(s_BSDIPA_MAGIC_WINDOW)' ||\
-		echo '#undef s_BSDIPA_MAGIC_WINDOW';\
-	echo '#endif';\
-	} > $(@)
+	v1= v2=;\
+	[ -n "$(s_BSDIPA_32)" ] && v1=s_BSDIPA_32="$(s_BSDIPA_32)";\
+	[ -n "$(s_BSDIPA_MAGIC_WINDOW)" ] && v2=s_BSDIPA_MAGIC_WINDOW="$(s_BSDIPA_MAGIC_WINDOW)";\
+	./configh.sh "$$v1" "$$v2"
 $(LIB): $(CONFIGH) $(OBJS)
 	$(AR) crs $(@) $(OBJS)
 clean:

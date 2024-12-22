@@ -109,7 +109,7 @@
 #ifndef s_BSDIPA_LIB_H
 #define s_BSDIPA_LIB_H
 
-#include <s-bsdipa-config.h> /* s_BSDIPA_VERSION, s_BSDIPA_32, s_BSDIPA_MAGIC_WINDOW */
+#include <s-bsdipa-config.h> /* s_BSDIPA_{VERSION,CONTACT,32,MAGIC_WINDOW} */
 
 #include <sys/types.h>
 
