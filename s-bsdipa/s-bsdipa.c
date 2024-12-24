@@ -349,7 +349,7 @@ main(int argc, char *argv[]){
 
 			a_CLOCK(&ts2);
 
-			switch(s_bsdipa_io_write(&c.d, &a_hook_write, pfp)){
+			switch(s_bsdipa_io_write_zlib(&c.d, &a_hook_write, pfp, 0)){
 			default: e = 0; break;
 			case s_BSDIPA_FBIG: e = EFBIG; break;
 			case s_BSDIPA_NOMEM: e = ENOMEM; break;
@@ -385,7 +385,7 @@ main(int argc, char *argv[]){
 
 			a_CLOCK(&ts2);
 
-			switch(s_bsdipa_io_read(&c.p)){
+			switch(s_bsdipa_io_read_zlib(&c.p)){
 			default: e = 0; break;
 			case s_BSDIPA_FBIG: e = EFBIG; break;
 			case s_BSDIPA_NOMEM: e = ENOMEM; break;
@@ -542,7 +542,7 @@ jeuse:
 		"Some statistics are written on standard output.\n"
 #endif
 		"\n"
-#if s_BSDIPA_IO != s_BSDIPA_IO_NONE
+#if s_BSDIPA_IO != s_BSDIPA_IO_RAW
 		". Patches use " s_BSDIPA_IO_NAME " compression.\n"
 #endif
 #ifdef s_BSDIPA_32

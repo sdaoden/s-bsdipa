@@ -1,6 +1,6 @@
 /*@ s-bsdipa-io: I/O (compression) layer for s-bsdipa-lib.
  *@ Use as follows:
- *@ - Define s_BSDIPA_IO to s_BSDIPA_IO_(NONE|ZLIB),
+ *@ - Define s_BSDIPA_IO to one of s_BSDIPA_IO_(RAW|ZLIB),
  *@ - Define s_BSDIPA_IO_READ and/or s_BSDIPA_IO_WRITE, as desired,
  *@ - and include this header.
  *@ It then provides the according s_BSDIPA_IO_NAME preprocessor literal
@@ -17,6 +17,9 @@
  *@ - s_BSDIPA_IO == s_BSDIPA_IO_ZLIB:
  *@   -- s_BSDIPA_IO_ZLIB_LEVEL may be defined as the "level" argument of
  *@      zlib's deflateInit() (default is 9).
+ *@ - the header may be included multiple times, shall multiple BSDIPA_IO
+ *@   variants be desired.  Still, only the _IO_READ/_WRITE of the first
+ *@   inclusion is valid.
  *@
  *@ Remarks:
  *@ - code requires ISO STD C99 (for now).
@@ -37,81 +40,95 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #ifndef s_BSDIPA_IO_H
-#define s_BSDIPA_IO_H
+# define s_BSDIPA_IO_H 0
+#elif s_BSDIPA_IO_H == 0
+# undef s_BSDIPA_IO_H
+# define s_BSDIPA_IO_H 1
+#else
+# error Only two I/O layers exist.
+#endif
 
-#include <s-bsdipa-lib.h>
+#if s_BSDIPA_IO_H == 0
+# include <s-bsdipa-lib.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#if !defined s_BSDIPA_IO_READ && !defined s_BSDIPA_IO_WRITE
-# error At least one of s_BSDIPA_IO_READ and s_BSDIPA_IO_WRITE is needed
-#endif
+#if s_BSDIPA_IO_H == 0
+# if !defined s_BSDIPA_IO_READ && !defined s_BSDIPA_IO_WRITE
+#  error At least one of s_BSDIPA_IO_READ and s_BSDIPA_IO_WRITE is needed
+# endif
 
 /* Compression types (preprocessor so sources can adapt) */
-#define s_BSDIPA_IO_NONE 0
-#define s_BSDIPA_IO_ZLIB 1
+# define s_BSDIPA_IO_RAW 0
+# define s_BSDIPA_IO_ZLIB 1
 
-#ifndef s_BSDIPA_IO_LINKAGE
-# define s_BSDIPA_IO_LINKAGE static
+# ifndef s_BSDIPA_IO_LINKAGE
+#  define s_BSDIPA_IO_LINKAGE static
+# endif
 #endif
 
-#ifdef s_BSDIPA_IO_WRITE
+#if s_BSDIPA_IO_H == 0
+# ifdef s_BSDIPA_IO_WRITE
 /* I/O write hook. If len<=0, dat is to be ignored: if 0 output should be flushed, if it is -1 this is EOF
- * and last call (flushing may be desirable then, too).  Any return other than BSDIPA_OK causes stop. */
-typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *user_cookie, uint8_t const *dat, s_bsdipa_off_t len);
-s_BSDIPA_IO_LINKAGE enum s_bsdipa_state s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp,
-		s_bsdipa_io_write_ptf hook, void *user_cookie);
-#endif
+ * and last call (flushing may be desirable then, too).  Any return other than BSDIPA_OK causes stop.
+ * If try_oneshot is set and it matters to the I/O layer then it shall try to invoke hook only once. */
+typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *cookie, uint8_t const *dat, s_bsdipa_off_t len);
+/*s_BSDIPA_IO_LINKAGE enum s_bsdipa_state s_bsdipa_io_write_*(struct s_bsdipa_diff_ctx const *dcp,
+		s_bsdipa_io_write_ptf hook, void *cookie, int try_oneshot);*/
+# endif
 
-#ifdef s_BSDIPA_IO_READ
+# ifdef s_BSDIPA_IO_READ
 /* I/O read hook.  It is assumed that pcp->pc_patch_dat and .pc_patch_len represent the entire (constant) patch data.
  * Output will be allocated via .pc_mem and stored in .pc_restored_dat and .pc_restored_len as a continuous chunk.
  * On error that memory, if any, will be freed, and .pc_restored_dat will be NULL.
  * On success .pc_header is filled in, and .pc_ctrl_dat, .pc_diff_dat and .pc_extra_dat are set accordingly;
  * it is up to the user to release .pc_patch_dat and set it to NULL before calling s_bsdipa_patch().
  * (Of course .pc_restored_dat will be overwritten by s_bsdipa_patch()..). */
-s_BSDIPA_IO_LINKAGE enum s_bsdipa_state s_bsdipa_io_read(struct s_bsdipa_patch_ctx *pcp);
+/*s_BSDIPA_IO_LINKAGE enum s_bsdipa_state s_bsdipa_io_read_*(struct s_bsdipa_patch_ctx *pcp);*/
+# endif
 #endif
 
 #undef s_BSDIPA_IO_NAME
-#if !defined s_BSDIPA_IO || s_BSDIPA_IO == s_BSDIPA_IO_NONE /* {{{ */
+#if !defined s_BSDIPA_IO || s_BSDIPA_IO == s_BSDIPA_IO_RAW /* {{{ */
 # undef s_BSDIPA_IO
-# define s_BSDIPA_IO s_BSDIPA_IO_NONE
-# define s_BSDIPA_IO_NAME "NONE"
+# define s_BSDIPA_IO s_BSDIPA_IO_RAW
+# define s_BSDIPA_IO_NAME "RAW"
 
 # include <assert.h>
 
-#ifdef s_BSDIPA_IO_WRITE
+# ifdef s_BSDIPA_IO_WRITE
 s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
-s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *user_cookie){
+s_bsdipa_io_write_raw(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *cookie, int try_oneshot){
 	struct s_bsdipa_ctrl_chunk *ccp;
 	enum s_bsdipa_state rv;
+	(void)try_oneshot;
 
-	if((rv = (*hook)(user_cookie, dcp->dc_header, sizeof(dcp->dc_header))) != s_BSDIPA_OK)
+	if((rv = (*hook)(cookie, dcp->dc_header, sizeof(dcp->dc_header))) != s_BSDIPA_OK)
 		goto jleave;
 
 	s_BSDIPA_DIFF_CTX_FOREACH_CTRL(dcp, ccp){
-		if((rv = (*hook)(user_cookie, ccp->cc_dat, ccp->cc_len)) != s_BSDIPA_OK)
+		if((rv = (*hook)(cookie, ccp->cc_dat, ccp->cc_len)) != s_BSDIPA_OK)
 			goto jleave;
 	}
 
-	if(dcp->dc_diff_len > 0 && (rv = (*hook)(user_cookie, dcp->dc_diff_dat, dcp->dc_diff_len)) != s_BSDIPA_OK)
+	if(dcp->dc_diff_len > 0 && (rv = (*hook)(cookie, dcp->dc_diff_dat, dcp->dc_diff_len)) != s_BSDIPA_OK)
 		goto jleave;
 
-	if(dcp->dc_extra_len > 0 && (rv = (*hook)(user_cookie, dcp->dc_extra_dat, dcp->dc_extra_len)) != s_BSDIPA_OK)
+	if(dcp->dc_extra_len > 0 && (rv = (*hook)(cookie, dcp->dc_extra_dat, dcp->dc_extra_len)) != s_BSDIPA_OK)
 		goto jleave;
 
-	rv = (*hook)(user_cookie, NULL, -1);
+	rv = (*hook)(cookie, NULL, -1);
 jleave:
 	return rv;
 }
-#endif /* s_BSDIPA_IO_WRITE */
+# endif /* s_BSDIPA_IO_WRITE */
 
-#ifdef s_BSDIPA_IO_READ
+# ifdef s_BSDIPA_IO_READ
 s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
-s_bsdipa_io_read(struct s_bsdipa_patch_ctx *pcp){
+s_bsdipa_io_read_raw(struct s_bsdipa_patch_ctx *pcp){
 	enum s_bsdipa_state rv;
 	uint64_t pl;
 	uint8_t const *pd;
@@ -166,10 +183,10 @@ jleave:
 
 	return rv;
 }
-#endif /* s_BSDIPA_IO_READ */
+# endif /* s_BSDIPA_IO_READ */
 /* }}} */
 
-#elif s_BSDIPA_IO == s_BSDIPA_IO_ZLIB /* _IO_NONE {{{ */
+#elif s_BSDIPA_IO == s_BSDIPA_IO_ZLIB /* _IO_RAW {{{ */
 # define s_BSDIPA_IO_NAME "ZLIB"
 
 # include <assert.h>
@@ -181,14 +198,14 @@ jleave:
 # endif
 
  /* For testing purposes */
-# define s__BSDIPA_IO_LIMIT (INT32_MAX - 1)
+# define s__BSDIPA_IO_ZLIB_LIMIT (INT32_MAX - 1)
 
-static voidpf s__bsdipa_io_alloc(voidpf my_cookie, uInt no, uInt size);
-static void s__bsdipa_io_free(voidpf my_cookie, voidpf dat);
+static voidpf s__bsdipa_io_zlib_alloc(voidpf my_cookie, uInt no, uInt size);
+static void s__bsdipa_io_zlib_free(voidpf my_cookie, voidpf dat);
 
-#ifdef s_BSDIPA_IO_WRITE
+# ifdef s_BSDIPA_IO_WRITE /* {{{ */
 s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
-s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *user_cookie){
+s_bsdipa_io_write_zlib(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *cookie, int try_oneshot){
 	z_stream zs;
 	struct s_bsdipa_ctrl_chunk *ccp;
 	char x;
@@ -199,8 +216,8 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 	z_streamp zsp;
 
 	zsp = &zs;
-	zs.zalloc = &s__bsdipa_io_alloc;
-	zs.zfree = &s__bsdipa_io_free;
+	zs.zalloc = &s__bsdipa_io_zlib_alloc;
+	zs.zfree = &s__bsdipa_io_zlib_free;
 	zs.opaque = (void*)&dcp->dc_mem;
 
 	switch(deflateInit(zsp, s_BSDIPA_IO_ZLIB_LEVEL)){
@@ -213,14 +230,23 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 	extlen = dcp->dc_extra_len;
 
 	olen = dcp->dc_ctrl_len + diflen + extlen; /* Guaranteed to work! */
-	if(olen <= 1000 * 150)
+	if(try_oneshot){
+		uLong ulo;
+
+		ulo = (uLong)olen; /* XXX check overflow? s_bsdipa_off_t>uLong case? */
+		ulo = deflateBound(zsp, ulo);
+		if(ulo >= s_BSDIPA_OFF_MAX)
+			goto jolenmax;
+		olen = (s_bsdipa_off_t)ulo;
+	}else if(olen <= 1000 * 150)
 		olen = 4096 * 4;
 	else if(olen <= 1000 * 1000)
 		olen = 4096 * 31;
 	else
+jolenmax:
 		olen = 4096 * 244;
 
-	obuf = (uint8_t*)s__bsdipa_io_alloc((void*)&dcp->dc_mem, 1, olen);
+	obuf = (uint8_t*)s__bsdipa_io_zlib_alloc((void*)&dcp->dc_mem, 1, olen);
 	if(obuf == NULL){
 		rv = s_BSDIPA_NOMEM;
 		goto jdone;
@@ -249,9 +275,9 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 		}else if(x < 4){
 			if(x == 2)
 				zsp->next_in = dcp->dc_diff_dat;
-			if(diflen > s__BSDIPA_IO_LIMIT){
-				zsp->avail_in = s__BSDIPA_IO_LIMIT;
-				diflen -= s__BSDIPA_IO_LIMIT;
+			if(diflen > s__BSDIPA_IO_ZLIB_LIMIT){
+				zsp->avail_in = s__BSDIPA_IO_ZLIB_LIMIT;
+				diflen -= s__BSDIPA_IO_ZLIB_LIMIT;
 				x = 3;
 			}else{
 				zsp->avail_in = (uInt)diflen;
@@ -260,9 +286,9 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 		}else if(x < 6){
 			if(x == 4)
 				zsp->next_in = dcp->dc_extra_dat;
-			if(extlen > s__BSDIPA_IO_LIMIT){
-				zsp->avail_in = s__BSDIPA_IO_LIMIT;
-				extlen -= s__BSDIPA_IO_LIMIT;
+			if(extlen > s__BSDIPA_IO_ZLIB_LIMIT){
+				zsp->avail_in = s__BSDIPA_IO_ZLIB_LIMIT;
+				extlen -= s__BSDIPA_IO_ZLIB_LIMIT;
 				x = 5;
 			}else{
 				zsp->avail_in = (uInt)extlen;
@@ -290,7 +316,7 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 
 			z = olen - zsp->avail_out;
 			if(z > 0 && (y == Z_STREAM_END || zsp->avail_out == 0)){
-				if((rv = (*hook)(user_cookie, obuf, z)) != s_BSDIPA_OK)
+				if((rv = (*hook)(cookie, obuf, z)) != s_BSDIPA_OK)
 					goto jdone;
 				zsp->next_out = obuf;
 				zsp->avail_out = (uInt)olen;
@@ -307,20 +333,20 @@ s_bsdipa_io_write(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hoo
 	}
 
 jeof:
-	rv = (*hook)(user_cookie, NULL, -1);
+	rv = (*hook)(cookie, NULL, -1);
 jdone:
 	if(obuf != NULL)
-		s__bsdipa_io_free((void*)&dcp->dc_mem, obuf);
+		s__bsdipa_io_zlib_free((void*)&dcp->dc_mem, obuf);
 
 	deflateEnd(zsp);
 jleave:
 	return rv;
 }
-#endif /* s_BSDIPA_IO_WRITE */
+# endif /* }}} s_BSDIPA_IO_WRITE */
 
-#ifdef s_BSDIPA_IO_READ
+# ifdef s_BSDIPA_IO_READ /* {{{ */
 s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
-s_bsdipa_io_read(struct s_bsdipa_patch_ctx *pcp){
+s_bsdipa_io_read_zlib(struct s_bsdipa_patch_ctx *pcp){
 	uint8_t hbuf[sizeof(struct s_bsdipa_header)];
 	z_stream zs;
 	s_bsdipa_off_t reslen;
@@ -334,10 +360,10 @@ s_bsdipa_io_read(struct s_bsdipa_patch_ctx *pcp){
 	/* make inflateEnd() callable */
 	zsp = &zs;
 	zs.next_in = (Bytef*)pcp->pc_patch_dat;
-	zs.avail_in = (patlen > s__BSDIPA_IO_LIMIT) ? s__BSDIPA_IO_LIMIT : (int)patlen;
+	zs.avail_in = (patlen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (int)patlen;
 	patlen -= (unsigned int)zs.avail_in;
-	zs.zalloc = &s__bsdipa_io_alloc;
-	zs.zfree = &s__bsdipa_io_free;
+	zs.zalloc = &s__bsdipa_io_zlib_alloc;
+	zs.zfree = &s__bsdipa_io_zlib_free;
 	zs.opaque = (void*)&pcp->pc_mem;
 
 	switch(inflateInit(zsp)){
@@ -367,14 +393,14 @@ s_bsdipa_io_read(struct s_bsdipa_patch_ctx *pcp){
 	reslen = pcp->pc_header.h_ctrl_len + pcp->pc_header.h_diff_len + pcp->pc_header.h_extra_len;
 
 	pcp->pc_restored_len = reslen;
-	pcp->pc_restored_dat = (uint8_t*)s__bsdipa_io_alloc(&pcp->pc_mem, 1, reslen);
+	pcp->pc_restored_dat = (uint8_t*)s__bsdipa_io_zlib_alloc(&pcp->pc_mem, 1, reslen);
 	if(pcp->pc_restored_dat == NULL){
 		rv = s_BSDIPA_NOMEM;
 		goto jdone;
 	}
 
 	zsp->next_out = pcp->pc_restored_dat;
-	zsp->avail_out = (reslen > s__BSDIPA_IO_LIMIT) ? s__BSDIPA_IO_LIMIT : (int)reslen;
+	zsp->avail_out = (reslen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (int)reslen;
 	reslen -= zsp->avail_out;
 
 	for(;;){
@@ -402,11 +428,11 @@ s_bsdipa_io_read(struct s_bsdipa_patch_ctx *pcp){
 		}
 
 		if(zsp->avail_out == 0){
-			zsp->avail_out = (reslen > s__BSDIPA_IO_LIMIT) ? s__BSDIPA_IO_LIMIT : (int)reslen;
+			zsp->avail_out = (reslen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (int)reslen;
 			reslen -= (unsigned int)zsp->avail_out;
 		}
 		if(zsp->avail_in == 0){
-			zsp->avail_in = (patlen > s__BSDIPA_IO_LIMIT) ? s__BSDIPA_IO_LIMIT : (int)patlen;
+			zsp->avail_in = (patlen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (int)patlen;
 			patlen -= (unsigned int)zsp->avail_in;
 		}
 	}
@@ -415,16 +441,16 @@ jdone:
 	inflateEnd(zsp);
 
 	if(rv != s_BSDIPA_OK && pcp->pc_restored_dat != NULL){
-		s__bsdipa_io_free(&pcp->pc_mem, pcp->pc_restored_dat);
+		s__bsdipa_io_zlib_free(&pcp->pc_mem, pcp->pc_restored_dat);
 		pcp->pc_restored_dat = NULL;
 	}
 
 	return rv;
 }
-#endif /* s_BSDIPA_IO_READ */
+# endif /* }}} s_BSDIPA_IO_READ */
 
 static voidpf
-s__bsdipa_io_alloc(voidpf my_cookie, uInt no, uInt size){
+s__bsdipa_io_zlib_alloc(voidpf my_cookie, uInt no, uInt size){
 	voidpf rv;
 	size_t memsz;
 	struct s_bsdipa_memory_ctx *mcp;
@@ -438,13 +464,16 @@ s__bsdipa_io_alloc(voidpf my_cookie, uInt no, uInt size){
 }
 
 static void
-s__bsdipa_io_free(voidpf my_cookie, voidpf dat){
+s__bsdipa_io_zlib_free(voidpf my_cookie, voidpf dat){
 	struct s_bsdipa_memory_ctx *mcp;
 
 	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
 
 	(mcp->mc_alloc != NULL) ? (*mcp->mc_free)(dat) : (*mcp->mc_custom_free)(mcp->mc_custom_cookie, dat);
 }
+
+# undef s__BSDIPA_IO_ZLIB_LIMIT
+# undef s_BSDIPA_IO_ZLIB_LEVEL
 /* }}} */
 
 #else /* _IO_ZLIB */
@@ -454,5 +483,4 @@ s__bsdipa_io_free(voidpf my_cookie, voidpf dat){
 #ifdef __cplusplus
 }
 #endif
-#endif /* !s_BSDIPA_IO_H */
 /* s-itt-mode */
