@@ -195,7 +195,7 @@ struct s_bsdipa_diff_ctx{
 	uint64_t dc_before_len;
 	uint8_t const *dc_after_dat; /* New data after changes, plus length. */
 	uint64_t dc_after_len;
-	/* Number of bytes in "a window".  If <=0 a built-in default (sizeof(void*)) is assigned and used.
+	/* Number of bytes in "a window".  If <=0 a built-in default (32) is assigned and used.
 	 * For binary data sizeof(void*) is useful, higher values (16, 32) impose major savings for text.
 	 * For text values greater than 64 usually make no sense, the decision in between 16 and 32 is
 	 * a tradeoff in between processing time and saving: the former increases massively.
