@@ -1,0 +1,8 @@
+lib/BsDiPa.pm	S-bsdipa perl module
+Makefile.PL	perl Makefile
+MANIFEST	This list of files
+MANIFEST.SKIP	Files to exclude from MANIFEST
+README		Introductional reading
+test.pl		Automated test
+BsDiPa.xs	S-bsdipa XS file
+c-lib		(Symbolic link to the) S-bsdipa C implementation

@@ -1,0 +1,8 @@
+s-bsdipa, a mutation of bsdiff
+==============================
+
+Colin Percival's BSDiff, imported from FreeBSD and mutated.
+BSDiff: create or apply binary difference patch.
+Please see c-lib/README and/or the lib/BsDiPa.pm POD for more.
+
+# s-ts-mode
