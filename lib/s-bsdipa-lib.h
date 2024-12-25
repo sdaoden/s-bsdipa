@@ -120,6 +120,18 @@
 extern "C" {
 #endif
 
+/* (Here so sharing is easy and official) */
+#define s_BSDIPA_COPYRIGHT \
+	"S-bsdipa is\n" \
+	"	Copyright (c) 2024 Steffen Nurpmeso\n" \
+	"	SPDX-License-Identifier: ISC\n" \
+	"The used BSDiff algorithm is\n" \
+	"	Copyright 2003-2005 Colin Percival\n" \
+	"	SPDX-License-Identifier: BSD-2-Clause\n" \
+	"and it uses libdivsufsort that is\n" \
+	"	Copyright (c) 2003 Yuta Mori All rights reserved.\n" \
+	"	SPDX-License-Identifier: MIT\n"
+
 /* Integer type for header and control block triples: file size / offsets.
  * For easy overflow avoidance (left hand value) we also test >s_BSDOFF_MAX-1.
  * The real limit is even smaller (patch preparation ~SIZE_MAX/sizeof(s_bsdipa_off_t)). */
