@@ -9,7 +9,7 @@
  *@   With s_BSDIPA_32 the overhead can almost be halved.
  *@ - code requires an ISO STD C99 environment.
  *@
- *@ Changes to original bsdiff:
+ *@ Changes to original bsdiff / libdivsufsort:
  *@ - optional (s_BSDIPA_32) 31-bit limits, thus smaller header/control data,
  *@   as well as smaller (about halved) memory overhead.
  *@ - the s_BSDIPA_MAGIC_WINDOW is configurable: the original is bound to
@@ -22,6 +22,7 @@
  *@ - no file I/O, everything is stored on the heap.
  *@ - internally diff- and extra data share heap to reduce memory overhead.
  *@ -- as a result diff data is stored in reverse order, last byte first.
+ *@ - memory allocation is solely done via user provided allocator.
  *@ - the header includes the extra data length, so that all information
  *@   is available through it.
  *@
