@@ -48,6 +48,8 @@
 #define s_BSDIPA_IO_READ
 #define s_BSDIPA_IO_WRITE
 #include "s-bsdipa-io.h"
+#define a_IO_READ s_bsdipa_io_read_zlib
+#define a_IO_WRITE s_bsdipa_io_write_zlib
 
 #ifndef O_BINARY
 # define O_BINARY 0
@@ -123,7 +125,7 @@ static void a_free(void *vp);
 
 static int a_mmap(int fd, char const *file, char const *id, uint64_t *lenp, uint8_t const **datp);
 
-static enum s_bsdipa_state a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len, int is_last);
+static enum s_bsdipa_state a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len, s_bsdipa_off_t is_last);
 
 #if a_STATS
 static void *
@@ -214,7 +216,7 @@ jerr:
 }
 
 static enum s_bsdipa_state
-a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len, int is_last){
+a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len, s_bsdipa_off_t is_last){
 	FILE *fp;
 	enum s_bsdipa_state rv;
 
@@ -350,7 +352,7 @@ main(int argc, char *argv[]){
 
 			a_CLOCK(&ts2);
 
-			switch(s_bsdipa_io_write_zlib(&c.d, &a_hook_write, pfp, 0)){
+			switch(a_IO_WRITE(&c.d, &a_hook_write, pfp, 0)){
 			default: e = 0; break;
 			case s_BSDIPA_FBIG: e = EFBIG; break;
 			case s_BSDIPA_NOMEM: e = ENOMEM; break;
@@ -389,7 +391,7 @@ main(int argc, char *argv[]){
 
 			a_CLOCK(&ts2);
 
-			switch(s_bsdipa_io_read_zlib(&c.p)){
+			switch(a_IO_READ(&c.p)){
 			default: e = 0; break;
 			case s_BSDIPA_FBIG: e = EFBIG; break;
 			case s_BSDIPA_NOMEM: e = ENOMEM; break;
