@@ -88,9 +88,8 @@ typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *cookie, uint8_t const
 /* I/O read hook.  It is assumed that pcp->pc_patch_dat and .pc_patch_len represent the entire (constant) patch data.
  * Output will be allocated via .pc_mem and stored in .pc_restored_dat and .pc_restored_len as a continuous chunk.
  * On error that memory, if any, will be freed, and .pc_restored_dat will be NULL.
- * On success .pc_header is filled in, and .pc_ctrl_dat, .pc_diff_dat and .pc_extra_dat are set accordingly;
- * it is up to the user to release .pc_patch_dat and set it to NULL before calling s_bsdipa_patch().
- * (Of course .pc_restored_dat will be overwritten by s_bsdipa_patch()..). */
+ * On success .pc_header is filled in; it is up to the user to update .pc_patch* with the .pc_restored* fields
+ * and call s_bsdipa_patch() to apply the real patch.  (.pc_restored_dat will be overwritten by s_bsdipa_patch().) */
 /*s_BSDIPA_IO_LINKAGE enum s_bsdipa_state s_bsdipa_io_read_*(struct s_bsdipa_patch_ctx *pcp);*/
 # endif
 #endif
