@@ -4,7 +4,7 @@
  *@ - Define s_BSDIPA_IO_READ and/or s_BSDIPA_IO_WRITE, as desired,
  *@ - and include this header.
  *@ It then provides the according s_BSDIPA_IO_NAME preprocessor literal
- *@ and s_bsdipa_io_{read,write}(), which (are) fe(e)d data to/from hooks.
+ *@ and s_bsdipa_io_{read,write}_..(), which (are) fe(e)d data to/from hooks.
  *@ The functions have s_BSDIPA_IO_LINKAGE storage, or static if not defined.
  *@ There may be additional static helper functions.
  *@
@@ -18,8 +18,8 @@
  *@   -- s_BSDIPA_IO_ZLIB_LEVEL may be defined as the "level" argument of
  *@      zlib's deflateInit() (default is 9).
  *@ - the header may be included multiple times, shall multiple BSDIPA_IO
- *@   variants be desired.  Still, only the _IO_READ/_WRITE of the first
- *@   inclusion is valid.
+ *@   variants be desired.  Still, only the _IO_LINKAGE as well as _IO_READ
+ *@   and _IO_WRITE of the first inclusion are valid.
  *@
  *@ Remarks:
  *@ - code requires ISO STD C99 (for now).
@@ -229,15 +229,15 @@ s_bsdipa_io_write_zlib(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_pt
 	diflen = dcp->dc_diff_len;
 	extlen = dcp->dc_extra_len;
 
-	olen = dcp->dc_ctrl_len + diflen + extlen; /* Guaranteed to work! */
+	olen = (size_t)(dcp->dc_ctrl_len + diflen + extlen); /* Cast guaranteed! */
 	if(try_oneshot){
 		uLong ulo;
 
 		ulo = (uLong)olen; /* XXX check overflow? s_bsdipa_off_t>uLong case? */
 		ulo = deflateBound(zsp, ulo);
-		if(ulo >= s_BSDIPA_OFF_MAX)
+		if(ulo >= s_BSDIPA_OFF_MAX /* implied || ulo != (uInt)ulo*/)
 			goto jolenmax;
-		olen = (s_bsdipa_off_t)ulo;
+		olen = (size_t)ulo;
 	}else if(olen <= 1000 * 150)
 		olen = 4096 * 4;
 	else if(olen <= 1000 * 1000)
@@ -246,7 +246,7 @@ s_bsdipa_io_write_zlib(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_pt
 jolenmax:
 		olen = 4096 * 244;
 
-	obuf = (uint8_t*)s__bsdipa_io_zlib_alloc((void*)&dcp->dc_mem, 1, olen);
+	obuf = (uint8_t*)s__bsdipa_io_zlib_alloc((void*)&dcp->dc_mem, 1, (uInt)olen);
 	if(obuf == NULL){
 		rv = s_BSDIPA_NOMEM;
 		goto jdone;
@@ -308,9 +308,9 @@ jolenmax:
 
 			switch(y){
 			case Z_OK: break;
-			case Z_STREAM_END: break;
+			case Z_STREAM_END: assert(flusht == Z_FINISH); break;
 			case Z_BUF_ERROR: assert(zsp->avail_out == 0); break;
-			default:
+			default: /* FALLTHRU */
 			case Z_STREAM_ERROR: rv = s_BSDIPA_INVAL; goto jdone;
 			}
 
@@ -390,10 +390,11 @@ s_bsdipa_io_read_zlib(struct s_bsdipa_patch_ctx *pcp){
 	if(rv != s_BSDIPA_OK)
 		goto jdone;
 
+	/* Guaranteed to work! */
 	reslen = pcp->pc_header.h_ctrl_len + pcp->pc_header.h_diff_len + pcp->pc_header.h_extra_len;
 
 	pcp->pc_restored_len = reslen;
-	pcp->pc_restored_dat = (uint8_t*)s__bsdipa_io_zlib_alloc(&pcp->pc_mem, 1, reslen);
+	pcp->pc_restored_dat = (uint8_t*)s__bsdipa_io_zlib_alloc(&pcp->pc_mem, 1, (uInt)reslen); /* (s_BSDIPA_32=y) */
 	if(pcp->pc_restored_dat == NULL){
 		rv = s_BSDIPA_NOMEM;
 		goto jdone;
@@ -428,12 +429,12 @@ s_bsdipa_io_read_zlib(struct s_bsdipa_patch_ctx *pcp){
 		}
 
 		if(zsp->avail_out == 0){
-			zsp->avail_out = (reslen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (int)reslen;
-			reslen -= (unsigned int)zsp->avail_out;
+			zsp->avail_out = (uInt)((reslen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : reslen);
+			reslen -= (s_bsdipa_off_t)zsp->avail_out;
 		}
 		if(zsp->avail_in == 0){
-			zsp->avail_in = (patlen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (int)patlen;
-			patlen -= (unsigned int)zsp->avail_in;
+			zsp->avail_in = (uInt)((patlen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : patlen);
+			patlen -= (s_bsdipa_off_t)zsp->avail_in;
 		}
 	}
 
