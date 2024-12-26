@@ -123,7 +123,7 @@ static void a_free(void *vp);
 
 static int a_mmap(int fd, char const *file, char const *id, uint64_t *lenp, uint8_t const **datp);
 
-static enum s_bsdipa_state a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len);
+static enum s_bsdipa_state a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len, int is_last);
 
 #if a_STATS
 static void *
@@ -214,21 +214,21 @@ jerr:
 }
 
 static enum s_bsdipa_state
-a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len){
+a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len, int is_last){
 	FILE *fp;
 	enum s_bsdipa_state rv;
 
 	rv = s_BSDIPA_OK;
 	fp = (FILE*)cookie;
 
-	if(len <= 0){
-		if(fflush(fp) == EOF)
-			rv = s_BSDIPA_INVAL;
-	}else{
+	if(len > 0){
 		a_RESLEN(len);
 		if(fwrite(dat, len, 1, fp) != 1)
 			rv = s_BSDIPA_INVAL;
 	}
+
+	if(is_last && fflush(fp) == EOF)
+		rv = s_BSDIPA_INVAL;
 
 	return rv;
 }

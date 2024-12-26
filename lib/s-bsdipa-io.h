@@ -72,10 +72,14 @@ extern "C" {
 
 #if s_BSDIPA_IO_H == 0
 # ifdef s_BSDIPA_IO_WRITE
-/* I/O write hook. If len<=0, dat is to be ignored: if 0 output should be flushed, if it is -1 this is EOF
- * and last call (flushing may be desirable then, too).  Any return other than BSDIPA_OK causes stop.
- * If try_oneshot is set and it matters to the I/O layer then it shall try to invoke hook only once. */
-typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *cookie, uint8_t const *dat, s_bsdipa_off_t len);
+/* I/O write hook.
+ * If is_last is set the hook will not be called again; in this case len may be 0.
+ * If try_oneshot is set and it matters to the I/O layer then it shall try to invoke hook only once;
+ * if try_oneshot is given negative, and if the layer succeeds to comply, then is_last will also be
+ * negative and the ownership of dat is transferred to the hook by definition -- and only then:
+ * in fact the absolute value of is_last is the buffer size, of which len bytes are useful. */
+typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *cookie, uint8_t const *dat, s_bsdipa_off_t len,
+		s_bsdipa_off_t is_last);
 /*s_BSDIPA_IO_LINKAGE enum s_bsdipa_state s_bsdipa_io_write_*(struct s_bsdipa_diff_ctx const *dcp,
 		s_bsdipa_io_write_ptf hook, void *cookie, int try_oneshot);*/
 # endif
@@ -106,21 +110,21 @@ s_bsdipa_io_write_raw(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf
 	enum s_bsdipa_state rv;
 	(void)try_oneshot;
 
-	if((rv = (*hook)(cookie, dcp->dc_header, sizeof(dcp->dc_header))) != s_BSDIPA_OK)
+	if((rv = (*hook)(cookie, dcp->dc_header, sizeof(dcp->dc_header), 0)) != s_BSDIPA_OK)
 		goto jleave;
 
 	s_BSDIPA_DIFF_CTX_FOREACH_CTRL(dcp, ccp){
-		if((rv = (*hook)(cookie, ccp->cc_dat, ccp->cc_len)) != s_BSDIPA_OK)
+		if((rv = (*hook)(cookie, ccp->cc_dat, ccp->cc_len, 0)) != s_BSDIPA_OK)
 			goto jleave;
 	}
 
-	if(dcp->dc_diff_len > 0 && (rv = (*hook)(cookie, dcp->dc_diff_dat, dcp->dc_diff_len)) != s_BSDIPA_OK)
+	if(dcp->dc_diff_len > 0 && (rv = (*hook)(cookie, dcp->dc_diff_dat, dcp->dc_diff_len, 0)) != s_BSDIPA_OK)
 		goto jleave;
 
-	if(dcp->dc_extra_len > 0 && (rv = (*hook)(cookie, dcp->dc_extra_dat, dcp->dc_extra_len)) != s_BSDIPA_OK)
+	if(dcp->dc_extra_len > 0 && (rv = (*hook)(cookie, dcp->dc_extra_dat, dcp->dc_extra_len, 0)) != s_BSDIPA_OK)
 		goto jleave;
 
-	rv = (*hook)(cookie, NULL, -1);
+	rv = (*hook)(cookie, NULL, 0, 1);
 jleave:
 	return rv;
 }
@@ -229,15 +233,17 @@ s_bsdipa_io_write_zlib(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_pt
 	diflen = dcp->dc_diff_len;
 	extlen = dcp->dc_extra_len;
 
-	olen = (size_t)(dcp->dc_ctrl_len + diflen + extlen); /* Cast guaranteed! */
+	olen = (size_t)(sizeof(dcp->dc_header) + dcp->dc_ctrl_len + diflen + extlen); /* Cast guaranteed! */
 	if(try_oneshot){
 		uLong ulo;
 
 		ulo = (uLong)olen; /* XXX check overflow? s_bsdipa_off_t>uLong case? */
 		ulo = deflateBound(zsp, ulo);
-		if(ulo >= s_BSDIPA_OFF_MAX /* implied || ulo != (uInt)ulo*/)
+		if(ulo >= s_BSDIPA_OFF_MAX /* implied || ulo != (uInt)ulo*/){
+			try_oneshot = 0;
 			goto jolenmax;
-		olen = (size_t)ulo;
+		}
+		olen = (size_t)++ulo; /* Note: length+1! */
 	}else if(olen <= 1000 * 150)
 		olen = 4096 * 4;
 	else if(olen <= 1000 * 1000)
@@ -251,6 +257,7 @@ jolenmax:
 		rv = s_BSDIPA_NOMEM;
 		goto jdone;
 	}
+	olen -= (try_oneshot != 0);
 
 	zsp->next_out = obuf;
 	zsp->avail_out = (uInt)olen;
@@ -315,25 +322,41 @@ jolenmax:
 			}
 
 			z = olen - zsp->avail_out;
-			if(z > 0 && (y == Z_STREAM_END || zsp->avail_out == 0)){
-				if((rv = (*hook)(cookie, obuf, z)) != s_BSDIPA_OK)
+			if(y == Z_STREAM_END || (z > 0 && zsp->avail_out == 0)){
+				int xarg;
+
+				/* */
+				if(y != Z_STREAM_END){
+					if(try_oneshot < 0)
+						try_oneshot = 1;
+					xarg = 0;
+				}else
+					xarg = (try_oneshot < 0) ? -(s_bsdipa_off_t)++olen : 1;
+
+				if((rv = (*hook)(cookie, obuf, z, xarg)) != s_BSDIPA_OK)
 					goto jdone;
+
+				if(xarg){
+					/* Did we transfer buffer ownership? */
+					if(xarg < 0)
+						obuf = NULL;
+					goto jdone;
+				}
 				zsp->next_out = obuf;
 				zsp->avail_out = (uInt)olen;
 			}
 
 			if(flusht == Z_FINISH){
-				if(y == Z_STREAM_END)
-					goto jeof;/* break;break; */
-			}else if(zsp->avail_in == 0)
+				assert(y != Z_STREAM_END);
+				continue;
+			}
+			if(zsp->avail_in == 0)
 				break;
 			/* Different to documentation this happens! */
 		}
 		assert(x != 7);
 	}
 
-jeof:
-	rv = (*hook)(cookie, NULL, -1);
 jdone:
 	if(obuf != NULL)
 		s__bsdipa_io_zlib_free((void*)&dcp->dc_mem, obuf);
