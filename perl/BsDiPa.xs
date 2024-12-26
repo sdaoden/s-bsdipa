@@ -1,4 +1,4 @@
-/*@ BsDiPa: perl XS interface of/to S-bsdipa.
+/*@ BsDiPa.xs: perl XS interface of/to S-bsdipa.
  *@
  *@ Remarks:
  *@ - code requires ISO STD C99 (for now).
@@ -43,11 +43,14 @@
 #define lg_table a_trsort_lg_table
 #include <c-lib/libdivsufsort/trsort.c>
 
+/* For testing purposes allow changes via _try_oneshot_set() */
+static IV a_try_oneshot = -1;
+
 static void *a_alloc(size_t size);
 static void a_free(void *vp);
 
 static SV *a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_window);
-static enum s_bsdipa_state a_core_diff_write(void *user_cookie, uint8_t const *dat, s_bsdipa_off_t len,
+static enum s_bsdipa_state a_core_diff__write(void *user_cookie, uint8_t const *dat, s_bsdipa_off_t len,
 		s_bsdipa_off_t is_last);
 
 static SV *a_core_patch(int what, SV *after_sv, SV *patch_sv, SV *before_sv);
@@ -69,7 +72,6 @@ a_free(void *vp){
 static SV *
 a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_window){
 	struct s_bsdipa_diff_ctx d;
-	char const *emsg;
 	SV *pref;
 	enum s_bsdipa_state s;
 
@@ -112,14 +114,14 @@ a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_windo
 
 	SvPVCLEAR(pref);
 	if(what == s_BSDIPA_IO_ZLIB)
-		s = s_bsdipa_io_write_zlib(&d, &a_core_diff_write, pref, -1);
+		s = s_bsdipa_io_write_zlib(&d, &a_core_diff__write, pref, a_try_oneshot);
 	else /*if(what == s_BSDIPA_IO_RAW)*/{
 		s_bsdipa_off_t x;
 
 		x = sizeof(d.dc_header) + d.dc_ctrl_len + d.dc_diff_len + d.dc_extra_len +1;
 		SvGROW(pref, x);
 		SvCUR_set(pref, 0);
-		s = s_bsdipa_io_write_raw(&d, &a_core_diff_write, pref, 0);
+		s = s_bsdipa_io_write_raw(&d, &a_core_diff__write, pref, a_try_oneshot);
 	}
 
 jdone:
@@ -133,7 +135,7 @@ jleave:
 }
 
 static enum s_bsdipa_state
-a_core_diff_write(void *user_cookie, uint8_t const *dat, s_bsdipa_off_t len, s_bsdipa_off_t is_last){
+a_core_diff__write(void *user_cookie, uint8_t const *dat, s_bsdipa_off_t len, s_bsdipa_off_t is_last){
 	char *cp;
 	s_bsdipa_off_t l;
 	SV *p;
@@ -144,10 +146,11 @@ a_core_diff_write(void *user_cookie, uint8_t const *dat, s_bsdipa_off_t len, s_b
 
 	p = (SV*)user_cookie;
 
-	/* Buffer takeover? */
-	if(is_last < 0){
+	/* Buffer takeover?  Even though likely short living, minimize wastage to XXX something reasonable */
+	if(is_last < 0 && (is_last > -65535 || is_last / 10 > -len)){
 		l = len;
 		sv_usepvn_flags(p, (char*)dat, len, SV_SMAGIC | SV_HAS_TRAILING_NUL);
+		/*xxx instead sv_setvpn(p, dat, len);*/
 	}else{
 		l = (s_bsdipa_off_t)SvCUR(p);
 
@@ -163,6 +166,9 @@ a_core_diff_write(void *user_cookie, uint8_t const *dat, s_bsdipa_off_t len, s_b
 		SvCUR_set(p, l);
 		SvPOK_only(p);
 		SvSETMAGIC(p);
+
+		if(is_last < 0)
+			a_free((void*)dat);
 	}
 
 jok:
@@ -173,11 +179,72 @@ jleave:
 
 static SV *
 a_core_patch(int what, SV *after_sv, SV *patch_sv, SV *before_sv){
-	return newSViv(s_BSDIPA_INVAL);
+	struct s_bsdipa_patch_ctx p;
+	SV *bref;
+	enum s_bsdipa_state s;
+
+	s = s_BSDIPA_INVAL;
+
+	bref = NULL;
+	if(/*!SvOK(before_sv) ||*/ !SvROK(before_sv))
+		goto jleave;
+	bref = SvRV(before_sv);
+
+	if(/*!SvOK(after_sv) ||*/ !SvPOK(after_sv))
+		goto jleave;
+
+	if(/*!SvOK(patch_sv) ||*/ !SvPOK(patch_sv))
+		goto jleave;
+
+	p.pc_mem.mc_alloc = &a_alloc;
+	p.pc_mem.mc_free = &a_free;
+	p.pc_after_len = SvCUR(after_sv);
+	p.pc_after_dat = SvPVbyte_nolen(after_sv);
+
+	p.pc_patch_len = SvCUR(patch_sv);
+	p.pc_patch_dat = SvPVbyte_nolen(patch_sv);
+
+	if(what == s_BSDIPA_IO_ZLIB)
+		s = s_bsdipa_io_read_zlib(&p);
+	else /*if(what == s_BSDIPA_IO_RAW)*/
+		s = s_bsdipa_io_read_raw(&p);
+	if(s != s_BSDIPA_OK)
+		goto jleave;
+
+	p.pc_patch_dat = p.pc_restored_dat;
+	p.pc_patch_len = p.pc_restored_len;
+
+	s = s_bsdipa_patch(&p);
+
+	a_free((void*)p.pc_patch_dat);
+
+	if(s != s_BSDIPA_OK)
+		goto jdone;
+
+	SvPVCLEAR(bref);
+	sv_usepvn_flags(bref, (char*)p.pc_restored_dat, p.pc_restored_len, SV_SMAGIC | SV_HAS_TRAILING_NUL);
+	p.pc_restored_dat = NULL;
+
+jdone:
+	s_bsdipa_patch_free(&p);
+
+jleave:
+	if(s != s_BSDIPA_OK && bref != NULL)
+		sv_setsv(bref, &PL_sv_undef);
+
+	return newSViv(s);
 }
 
 MODULE = BsDiPa PACKAGE = BsDiPa
 VERSIONCHECK: DISABLE
+PROTOTYPES: ENABLE
+
+void
+_try_oneshot_set(nval)
+	SV *nval
+CODE:
+	if(SvIOK(nval))
+		a_try_oneshot = SvIV(nval);
 
 SV *
 VERSION()

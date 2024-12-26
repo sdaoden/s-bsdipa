@@ -16,9 +16,7 @@ sub done_testing{
 	$ctx->release
 }
 
-BEGIN{
-	require BsDiPa;
-}
+BEGIN {require BsDiPa}
 
 use strict;
 use diagnostics;
@@ -32,44 +30,88 @@ use BsDiPa;
 #print BsDiPa::CONTACT, "\n";
 #print BsDiPa::COPYRIGHT;
 
-my ($b, $a) = ("\012\013\00\01\02\03\04\05\06\07" x 3, "\010\011\012\013\014" x 4);
+sub doit{
+	my ($t, $b, $a) = @_;
 
-my $pz;
-ok(BsDiPa::core_diff_zlib(undef, $a, \$pz) eq BsDiPa::INVAL);
-ok(BsDiPa::core_diff_zlib($b, undef, \$pz) eq BsDiPa::INVAL);
-ok(BsDiPa::core_diff_zlib($b, $a, undef) eq BsDiPa::INVAL);
-ok(BsDiPa::core_diff_zlib($b, $a, $pz) eq BsDiPa::INVAL);
-ok(BsDiPa::core_diff_zlib($b, $a, \$pz) eq BsDiPa::OK);
+	my $pz = 0;
+	ok(BsDiPa::core_diff_zlib(undef, $a, \$pz) eq BsDiPa::INVAL);
+	ok(!defined $pz);
+	ok(BsDiPa::core_diff_zlib($b, undef, \$pz) eq BsDiPa::INVAL);
+	ok(!defined $pz);
+	ok(BsDiPa::core_diff_zlib($b, $a, undef) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_diff_zlib($b, $a, $pz) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_diff_zlib($b, $a, \$pz) eq BsDiPa::OK);
+	ok(defined $pz);
 
-my $pr;
-ok(BsDiPa::core_diff_raw(undef, $a, \$pr) eq BsDiPa::INVAL);
-ok(BsDiPa::core_diff_raw($b, undef, \$pr) eq BsDiPa::INVAL);
-ok(BsDiPa::core_diff_raw($b, $a, undef) eq BsDiPa::INVAL);
-ok(BsDiPa::core_diff_raw($b, $a, $pr) eq BsDiPa::INVAL);
-ok(BsDiPa::core_diff_raw($b, $a, \$pr) eq BsDiPa::OK);
+	my $pr = 0;
+	ok(BsDiPa::core_diff_raw(undef, $a, \$pr) eq BsDiPa::INVAL);
+	ok(!defined $pr);
+	ok(BsDiPa::core_diff_raw($b, undef, \$pr) eq BsDiPa::INVAL);
+	ok(!defined $pr);
+	ok(BsDiPa::core_diff_raw($b, $a, undef) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_diff_raw($b, $a, $pr) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_diff_raw($b, $a, \$pr) eq BsDiPa::OK);
+	ok(defined $pr);
 
-my $x = uncompress($pz);
-ok(($pr cmp $x) == 0);
+	my $x = uncompress($pz);
+	ok(($pr cmp $x) == 0);
 
+	my $rz = 0;
+	ok(BsDiPa::core_patch_zlib(undef, $pz, \$rz) eq BsDiPa::INVAL);
+	ok(!defined $rz);
+	ok(BsDiPa::core_patch_zlib($a, undef, \$rz) eq BsDiPa::INVAL);
+	ok(!defined $rz);
+	ok(BsDiPa::core_patch_zlib($a, $pz, undef) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_patch_zlib($a, $pz, $rz) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_patch_zlib($a, $pz, \$rz) eq BsDiPa::OK);
+	ok(defined $rz);
+	ok(($rz cmp $b) == 0);
 
+	my $rr = 0;
+	ok(BsDiPa::core_patch_raw(undef, $pr, \$rr) eq BsDiPa::INVAL);
+	ok(!defined $rr);
+	ok(BsDiPa::core_patch_raw($a, undef, \$rr) eq BsDiPa::INVAL);
+	ok(!defined $rr);
+	ok(BsDiPa::core_patch_raw($a, $pr, undef) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_patch_raw($a, $pr, $rr) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_patch_raw($a, $pr, \$rr) eq BsDiPa::OK);
+	ok(defined $rr);
+	ok(($rr cmp $b) == 0);
 
+	ok(($rr cmp $rz) == 0);
+}
 
-######FIXME
-open X, '<', '/tmp/x/0';
-binmode X;
-read X, $b, 2000000000 or die "UAUAU: $^E";
-close X;
-open X, '<', '/tmp/x/1';
-binmode X;
-read X, $a, 2000000000 or die "UAUAU 2: $^E";
-close X;
+sub ckit{
+	# Spaced so the several buffer size bongoos of s-bsdipa-io.h, ZLIB, drum
+	my ($b, $a);
+	($b, $a) = ("\012\013\00\01\02\03\04\05\06\07" x 3, "\010\011\012\013\014" x 4);
+	#print 'Tiny size: ', length($b), ' / ', length($a), "\n";
+	doit('tiny', $b, $a);
 
-ok(BsDiPa::core_diff_zlib($b, $a, \$pz) eq BsDiPa::OK);
-	open X, '>', '/tmp/x/p.perl';
-	binmode X or die "f1-binmode";
-	print X $pz;
-	binmode X or die "f1-flush";
+	($b, $a) = ("\012\013\00\01\02\03\04\05\06\07" x 3000, "\010\011\012\013\014" x 4000);
+	#print 'Small size: ', length($b), ' / ', length($a), "\n";
+	doit('small', $b, $a);
 
+	($b, $a) = ("\012\013\00\01\02\03\04\05\06\07" x 10000, "\010\011\012\013\014" x 9000);
+	#print 'Medium size: ', length($b), ' / ', length($a), "\n";
+	doit('medium', $b, $a);
+
+	($b, $a) = ("\012\013\00\01\02\03\04\05\06\07" x 80000, "\010\011\012\013\014" x 90000);
+	#print 'Big size: ', length($b), ' / ', length($a), "\n";
+	doit('big', $b, $a);
+
+	($b, $a) = ("\012\013\00\01\02\03\04\05\06\07" x 120000, "\010\011\012\013\014" x 100000);
+	#print 'Bigger size: ', length($b), ' / ', length($a), "\n";
+	doit('bigger', $b, $a);
+}
+
+ckit();
+BsDiPa::_try_oneshot_set(0);
+ckit();
+BsDiPa::_try_oneshot_set(1);
+ckit();
+BsDiPa::_try_oneshot_set(-1);
+for(my $i=0; $i < 5; ++$i) {ckit()}
 
 done_testing()
 # s-itt-mode

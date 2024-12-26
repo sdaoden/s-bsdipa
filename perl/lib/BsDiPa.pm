@@ -1,5 +1,4 @@
 #@ (S-)bsdipa - create or apply binary difference patch.
-#@ See POD or inspect $COPYRIGHT for more.
 package BsDiPa;
 
 use diagnostics -verbose;
@@ -37,9 +36,17 @@ S-bsdipa -- create or apply binary difference patch
 		my $x = uncompress($pz);
 		die 'sick3' unless(($pr cmp $x) == 0);
 
+	my $rz;
+	die 'sick4' if BsDiPa::core_patch_zlib($a, $pz, \$rz) ne BsDiPa::OK;
+	my $rr;
+	die 'sick5' if BsDiPa::core_patch_raw($a, $pr, \$rr) ne BsDiPa::OK;
+
+	die 'sick6' unless(($rz cmp $rr) == 0);
+
 =head1 DESCRIPTION
 
-Always uses C<s_BSDIPA_32> mode with 31-bit size limits.
+Colin Percival's BSDiff, imported from FreeBSD and mutated.
+The perl package only uses C<s_BSDIPA_32> mode (31-bit size limits).
 
 =head1 INTERFACE
 
@@ -74,21 +81,33 @@ Allocation failure.
 
 Any other error.
 
-=item C<core_diff_zlib(before_sv, after_sv, patch_sv, magic_window=0)>
+=item C<core_diff_zlib($before_sv, $after_sv, $patch_sv, $magic_window=0)>
 
 Create a compressed binary diff
-from the memory backing C<before_sv>
-to the memory backing C<after_sv>,
-and place the result in the reference C<patch_sv>.
-C<magic_window> specifies lookaround bytes,
+from the memory backing C<$before_sv>
+to the memory backing C<$after_sv>,
+and place the result in the (de-)reference(d) C<$patch_sv>.
+On error C<undef> is stored if only C<$patch_sv> is accessible.
+C<$magic_window> specifies lookaround bytes,
 if 0 the built-in default is used (32 at the time of this writing);
 the already unreasonable value 4096 is the maximum supported.
 
-=item C<core_diff_raw(before_sv, after_sv, patch_sv, magic_window=0)>
+=item C<core_diff_raw($before_sv, $after_sv, $patch_sv, $magic_window=0)>
 
 Exactly like C<core_diff_zlib()>, but without compression.
 As compression is absolutely necessary, only meant for testing,
 or as a foundation for other compression methods.
+
+=item C<core_patch_zlib($after_sv, $patch_sv, $before_sv)>
+
+Apply a compressed binary diff C<$patch_sv>
+to the memory backing C<$after_sv>
+in order to restore original content in the (de-)reference(d) C<$before_sv>.
+On error C<undef> is stored if only C<$before_sv> is accessible.
+
+=item C<core_patch_raw($after_sv, $patch_sv, $before_sv)>
+
+Exactly like C<core_patch_zlib()>, but expects raw uncompressed patch.
 
 =back
 
