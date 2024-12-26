@@ -257,7 +257,7 @@ main(int argc, char *argv[]){
 	enum s_bsdipa_state s;
 	char const *targetname, *inbef, *inaft, *inpat, *emsg;
 	FILE *pfp;
-	int f, rv, fd;
+	int f, rv, noheader, fd;
 
 	emsg = targetname = NULL; /* UNINIT */
 	f = a_NONE;
@@ -270,6 +270,7 @@ main(int argc, char *argv[]){
 	rv = a_EX_DATAERR;
 
 	targetname = argv[1];
+	noheader = (*targetname == '/') ? (++targetname, 1) : 0;
 	fd = (*targetname == '!') ? (++targetname, O_TRUNC) : O_EXCL;
 
 	if(!strcmp(targetname, "patch")){
@@ -341,7 +342,7 @@ main(int argc, char *argv[]){
 			goto jes;
 
 		emsg = "I/O error";
-		if(fwrite(a_MAGIC, sizeof(a_MAGIC) -1, 1, pfp) != 1){
+		if(!noheader && fwrite(a_MAGIC, sizeof(a_MAGIC) -1, 1, pfp) != 1){
 			errno = EIO;
 			goto jioerr;
 		}else{
@@ -371,7 +372,8 @@ main(int argc, char *argv[]){
 			goto jleave;
 		f |= a_UNMAP_2ND;
 
-		if(c.p.pc_patch_len < sizeof(a_MAGIC) -1 || memcmp(c.p.pc_patch_dat, a_MAGIC, sizeof(a_MAGIC) -1)){
+		if(!noheader && (c.p.pc_patch_len < sizeof(a_MAGIC) -1 ||
+				memcmp(c.p.pc_patch_dat, a_MAGIC, sizeof(a_MAGIC) -1))){
 			fprintf(stderr, "ERROR: \"patch\": incorrect file magic\n");
 			goto jleave;
 		}
@@ -380,8 +382,10 @@ main(int argc, char *argv[]){
 		/* C99 */{
 			int e;
 
-			c.p.pc_patch_dat += sizeof(a_MAGIC) -1;
-			c.p.pc_patch_len -= sizeof(a_MAGIC) -1;
+			if(!noheader){
+				c.p.pc_patch_dat += sizeof(a_MAGIC) -1;
+				c.p.pc_patch_len -= sizeof(a_MAGIC) -1;
+			}
 
 			a_CLOCK(&ts2);
 
@@ -394,8 +398,10 @@ main(int argc, char *argv[]){
 
 			a_CLOCK(&te2);
 
-			c.p.pc_patch_dat -= sizeof(a_MAGIC) -1;
-			c.p.pc_patch_len += sizeof(a_MAGIC) -1;
+			if(!noheader){
+				c.p.pc_patch_dat -= sizeof(a_MAGIC) -1;
+				c.p.pc_patch_len += sizeof(a_MAGIC) -1;
+			}
 			munmap((void*)c.p.pc_patch_dat, (size_t)c.p.pc_patch_len + 1);
 			f ^= a_UNMAP_2ND;
 
