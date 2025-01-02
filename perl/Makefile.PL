@@ -21,11 +21,11 @@ version_and_contact 'c-lib/configh.sh';
 system 'cd c-lib; ./configh.sh s_BSDIPA_32=y';
 
 WriteMakefile(
-	'DISTNAME' => 'S-bsdipa',
+	'DISTNAME' => 'S-BsDiPa',
 	'NAME' => 'BsDiPa',
 	'VERSION' => $VERSION,
 	(
-		ABSTRACT => 'S-bsdipa: create or apply binary difference patch',
+		ABSTRACT => 'Create or apply binary difference patch',
 		AUTHOR => $CONTACT,
 		LICENSE => 'open_source'
 	),
