@@ -54,7 +54,7 @@ typedef char ASSERTION_failed__off_max[OFF_MAX != INT32_MAX ? 1 : -1];
 
 /* What seems a good default */
 #ifndef s_BSDIPA_MAGIC_WINDOW
-# define s_BSDIPA_MAGIC_WINDOW 32
+# define s_BSDIPA_MAGIC_WINDOW 16
 #endif
 
 /* Checks use saidx_t, but the patch code uses s_bsdipa_off_t, so these must be of EQ size! */
