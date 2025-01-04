@@ -1,9 +1,9 @@
-s-bsdipa, a mutation of bsdiff
+s-bsdipa, a mutation of BSDiff
 ==============================
 
-Colin Percival's BSDiff, imported from FreeBSD and mutated.
-BSDiff: create or apply binary difference patch.
-In general:
+Colin Percival's BSDiff, imported from FreeBSD and transformed into
+a library; please see header comment of s-bsdipa-lib.h for more:
+create or apply binary difference patch.  In general:
 
 - one includes s-bsdipa-lib.h and uses the all-in-memory s_bsdipa_diff()
   and s_bsdipa_patch() functions to create and apply patches.
@@ -18,15 +18,18 @@ In general:
   (As said there, linker flags for the chosen compression method
   or library must be provided by whoever uses the s-bsdipa-io.h layer.)
 
-- the program s-bsdipa present in an equally named directory of the
-  source repository can be inspected for a complete example picture.
-  It also times execution and tracks memory usage, for your interest.
-
 - in general the lib/ directory of the source repository is self-
   contained, and may be copied for inclusion in other projects.
 
-- Please see the introductional header comments of s-bsdipa-lib.h and
+- please see the introductional header comments of s-bsdipa-lib.h and
   s-bsdipa-io.h for more.
+
+- the directory s-bsdipa contains a self-contained (static) (example)
+  program which can create and apply patches (like a combined FreeBSD
+  bsdiff and bspatch program).
+  It times execution and tracks memory usage on stderr.
+
+- the directory perl contains the self-contained BsDiPa CPAN module.
 
 Licenses (full text included in s-bsdipa-lib.h):
   libdivsufsort(/LICENSE): MIT

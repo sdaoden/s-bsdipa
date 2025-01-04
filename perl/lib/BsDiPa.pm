@@ -45,7 +45,9 @@ S-bsdipa -- create or apply binary difference patch
 
 =head1 DESCRIPTION
 
-Colin Percival's BSDiff, imported from FreeBSD and mutated.
+Colin Percival's BSDiff, imported from FreeBSD and transformed into
+a library; please see header comment of lib/s-bsdipa-lib.h for more:
+create or apply binary difference patch.
 The perl package only uses C<s_BSDIPA_32> mode (31-bit size limits).
 
 =head1 INTERFACE
@@ -113,7 +115,7 @@ Exactly like C<core_patch_zlib()>, but expects raw uncompressed patch.
 
 =head1 AUTHOR
 
-Steffen Nurpmeso E<lt>steffen@sdaoden.euE<gt>.
+Steffen Nurpmeso E<lt>steffen@sdaoden.eu<gt>.
 
 =head1 LICENSE
 

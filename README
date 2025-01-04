@@ -1,8 +1,9 @@
-s-bsdipa, a mutation of bsdiff
+s-bsdipa, a mutation of BSDiff
 ==============================
 
-Colin Percival's bsdiff, imported from FreeBSD and mutated.
-Please see header comment of lib/s-bsdipa-lib.h for more on that.
+Colin Percival's BSDiff, imported from FreeBSD and transformed into
+a library; please see header comment of lib/s-bsdipa-lib.h for more:
+create or apply binary difference patch.
 Please see top of lib/makefile for build instructions.
 
 The general thought and expectation is that the entire lib/
