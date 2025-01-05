@@ -1,6 +1,8 @@
 require 5.026_000;
 use ExtUtils::MakeMaker;
 
+# perl Makefile.PL; make distdir (; make distcheck)
+
 my ($VERSION, $CONTACT);
 
 sub version_and_contact{
@@ -21,8 +23,8 @@ version_and_contact 'c-lib/configh.sh';
 system 'cd c-lib; ./configh.sh s_BSDIPA_32=y';
 
 WriteMakefile(
-	'DISTNAME' => 'S-BsDiPa',
 	'NAME' => 'BsDiPa',
+	#'DISTNAME' => 'S-BsDiPa',
 	'VERSION' => $VERSION,
 	(
 		ABSTRACT => 'Create or apply binary difference patch',
