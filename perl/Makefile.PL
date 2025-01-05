@@ -1,4 +1,4 @@
-require 5.008_001;
+require 5.026_000;
 use ExtUtils::MakeMaker;
 
 my ($VERSION, $CONTACT);
@@ -29,6 +29,7 @@ WriteMakefile(
 		AUTHOR => $CONTACT,
 		LICENSE => 'open_source'
 	),
+	MIN_PERL_VERSION => '5.26.0', # SvPVCLEAR()
 	OBJECT => 'BsDiPa.o',
 	CCFLAGS => '-I. -Ic-lib',
 	LIBS => '-lz', # TODO can we reach into perl's built-in zlib?
