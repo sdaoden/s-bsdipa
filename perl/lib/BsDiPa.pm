@@ -73,7 +73,7 @@ Result is usable.
 
 =item C<FBIG> (number)
 
-Data length too large.
+Data or resulting control block length too large.
 
 =item C<NOMEM> (number)
 

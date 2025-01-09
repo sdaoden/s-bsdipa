@@ -148,7 +148,7 @@ typedef int64_t s_bsdipa_off_t;
 
 enum s_bsdipa_state{
 	s_BSDIPA_OK, /* Result is usable. */
-	s_BSDIPA_FBIG, /* Data length too large. */
+	s_BSDIPA_FBIG, /* Data or resulting control block length too large. */
 	s_BSDIPA_NOMEM, /* Allocation failure. */
 	s_BSDIPA_INVAL /* Any other error. */
 };
@@ -167,7 +167,7 @@ struct s_bsdipa_memory_ctx{
 	void (*mc_custom_free)(void *, void *);
 };
 
-/* [Informational:] Header. */
+/* [Informational:] Header.  It is guaranteed that .h_ctrl_len+.h_diff_len+.h_extra_len < s_BSDIPA_OFF_MAX! */
 struct s_bsdipa_header{
 	s_bsdipa_off_t h_ctrl_len; /* Length of control block. */
 	s_bsdipa_off_t h_diff_len; /* Length of difference data block. */
