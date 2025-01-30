@@ -367,6 +367,7 @@ main(int argc, char *argv[]){
 	}else{
 		c.p.pc_after_dat = c.d.dc_after_dat;
 		c.p.pc_after_len = c.d.dc_after_len;
+		c.p.pc_max_allowed_restored_len = 0;
 
 		if(!a_mmap(-1, inpat, "patch", &c.p.pc_patch_len, &c.p.pc_patch_dat))
 			goto jleave;

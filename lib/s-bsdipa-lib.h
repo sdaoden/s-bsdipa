@@ -224,6 +224,9 @@ struct s_bsdipa_patch_ctx{
 	/* Inputs (64-bit type for easy user assignment, effective limit is s_BSDIPA_OFF_MAX): */
 	uint8_t const *pc_after_dat; /* Source: after ("current") data, plus length. */
 	uint64_t pc_after_len;
+	/* 0=unlimited, otherwise upper limit in bytes.
+	 * This does not change the effective limit, but it may constrain it further. */
+	uint64_t pc_max_allowed_restored_len;
 	/* Patch data: one can *either* set .pc_patch_dat plus length, *or* the individual fields.
 	 * For the former case s_bsdipa_patch_parse_header() can be used to create .pc_header,
 	 * and .pc_patch_dat and .pc_patch_len are to be set thereafter.
