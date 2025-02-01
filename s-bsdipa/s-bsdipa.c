@@ -544,7 +544,7 @@ jeuse:
 		"xdiff uses 16, whereas diff/VAL expects a positive integer to be used instead.\n"
 		"An existing target is overwritten if the subcommand is prefixed with \"!\".\n"
 #if a_STATS
-		"Some statistics are written on standard output.\n"
+		"Some statistics are written on standard error.\n"
 #endif
 		"\n"
 #if s_BSDIPA_IO != s_BSDIPA_IO_RAW
