@@ -264,7 +264,7 @@ void s_bsdipa_diff_free(struct s_bsdipa_diff_ctx *dcp);
 /* Deserialize a header from dat (at least sizeof(*hp)) into hp.
  * Returns _OK, or _INVAL if input is senseless (negative lengths, overflows, etc).
  * Note the header could be stored distinct from data, so overflow check does not account for header size.
- * However, it assumes s_bsdipa_diff() generated the header: rigit verification is performed. */
+ * However, it assumes s_bsdipa_diff() generated the header: strict verification is performed. */
 enum s_bsdipa_state s_bsdipa_patch_parse_header(struct s_bsdipa_header *hp, uint8_t const *dat);
 
 /* Create restored data as documented for s_bsdipa_patch_ctx.
