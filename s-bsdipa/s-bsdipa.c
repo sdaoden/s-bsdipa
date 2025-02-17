@@ -314,16 +314,14 @@ main(int argc, char *argv[]){
 
 	fd = open(argv[4], O_WRONLY | O_BINARY | O_CREAT | fd, 0666);
 	if(fd == -1){
-		if(errno == EEXIST)
-			rv = a_EX_TEMPFAIL;
 		emsg = "cannot create";
-		goto jioerr;
+		goto Jioerr;
 	}
 	f |= a_UNLINK | a_CLOSE;
 
 	if((pfp = fdopen(fd, "wb")) == NULL){
 		emsg = "cannot fdopen";
-		goto jioerr;
+		goto Jioerr;
 	}
 	f ^= a_CLOSE | a_FCLOSE;
 
@@ -349,7 +347,7 @@ main(int argc, char *argv[]){
 		emsg = "I/O error";
 		if(!noheader && fwrite(a_MAGIC, sizeof(a_MAGIC) -1, 1, pfp) != 1){
 			errno = EIO;
-			goto jioerr;
+			goto Jioerr;
 		}else{
 			int e;
 
@@ -366,7 +364,7 @@ main(int argc, char *argv[]){
 
 			if(e != 0){
 				errno = e;
-				goto jioerr;
+				goto Jioerr;
 			}
 		}
 	}else{
@@ -415,7 +413,7 @@ main(int argc, char *argv[]){
 				assert(c.p.pc_restored_dat == NULL);
 				emsg = "patch corrupt";
 				errno = e;
-				goto jioerr;
+				goto Jioerr;
 			}
 
 			f |= a_FREE_2ND;
@@ -448,7 +446,7 @@ main(int argc, char *argv[]){
 
 				if(fwrite(dat, i, 1, pfp) != 1){
 					errno = EIO;
-					goto jioerr;
+					goto Jioerr;
 				}
 				dat += i;
 			}
@@ -457,7 +455,7 @@ main(int argc, char *argv[]){
 
 	if(fflush(pfp) == EOF){
 		errno = EIO;
-		goto jioerr;
+		goto Jioerr;
 	}
 
 	if(!ferror(pfp))
@@ -476,12 +474,14 @@ jleave:
 		if(!fclose(pfp)){
 			if(rv == a_EX_OK)
 				f ^= a_UNLINK;
-		}else{
-jioerr:
-			fprintf(stderr, "ERROR: \"%s\": %s: %s\n", targetname, emsg, strerror(errno));
+		}else Jioerr:{
+			int e;
+
+			e = errno;
+			fprintf(stderr, "ERROR: \"%s\": %s: %s\n", targetname, emsg, strerror(e));
 			if(f & a_FCLOSE)
 				fclose(pfp);
-			rv = a_EX_IOERR;
+			rv = (e == EEXIST) ? a_EX_TEMPFAIL : a_EX_IOERR;
 		}
 	}
 
