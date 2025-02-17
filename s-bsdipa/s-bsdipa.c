@@ -277,7 +277,7 @@ main(int argc, char *argv[]){
 	rv = a_EX_DATAERR;
 
 	targetname = argv[1];
-	noheader = (*targetname == '/') ? (++targetname, 1) : 0;
+	noheader = (*targetname == '=') ? (++targetname, 1) : 0;
 	fd = (*targetname == '!') ? (++targetname, O_TRUNC) : O_EXCL;
 
 	if(!strcmp(targetname, "patch")){
@@ -548,8 +548,10 @@ jeuse:
 		"they differ in the size of the \"magic window\": diff uses the built-in value,\n"
 		"xdiff uses 16, whereas diff/VAL expects a positive integer to be used instead.\n"
 		"An existing target is overwritten if the subcommand is prefixed with \"!\".\n"
+		"(If above subcommands are prefixed by \"=\" the otherwise expected / produced\n"
+		"filetype identification header is omitted, and only raw data is processed.)\n"
 #if a_STATS
-		"Some statistics are written on standard error.\n"
+		"Certain statistics are written on standard error.\n"
 #endif
 		"\n"
 #if s_BSDIPA_IO != s_BSDIPA_IO_RAW
