@@ -123,7 +123,7 @@ static void a_free(void *vp);
 # define a_free free
 #endif
 
-static int a_mmap(int fd, char const *file, char const *id, uint64_t *lenp, uint8_t const **datp);
+static int a_mmap(char const *file, char const *id, uint64_t *lenp, uint8_t const **datp);
 
 static enum s_bsdipa_state a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len, s_bsdipa_off_t is_last);
 
@@ -176,11 +176,12 @@ a_free(void *vp){
 #endif /* a_STATS */
 
 static int
-a_mmap(int fd, char const *file, char const *id, uint64_t *lenp, uint8_t const **datp){
+a_mmap(char const *file, char const *id, uint64_t *lenp, uint8_t const **datp){
 	char const *emsg;
 	off_t xoff;
+	int fd;
 
-	if(fd == -1 && (fd = open(file, O_RDONLY | O_BINARY, 0)) < 0){
+	if((fd = open(file, O_RDONLY | O_BINARY, 0)) == -1){
 		emsg = "cannot open";
 		goto jerr;
 	}
@@ -207,8 +208,12 @@ a_mmap(int fd, char const *file, char const *id, uint64_t *lenp, uint8_t const *
 		goto jerr;
 	}
 
+	fd = -1;
 	emsg = NULL;
 jleave:
+	if(fd != -1)
+		(void)close(fd);
+
 	return (emsg == NULL);
 jerr:
 	fprintf(stderr, "ERROR: file \"%s\": %s: %s\n", id, emsg, strerror(errno));
@@ -322,12 +327,12 @@ main(int argc, char *argv[]){
 	}
 	f ^= a_CLOSE | a_FCLOSE;
 
-	if(!a_mmap(-1, inaft, "after", &c.d.dc_after_len, &c.d.dc_after_dat))
+	if(!a_mmap(inaft, "after", &c.d.dc_after_len, &c.d.dc_after_dat))
 		goto jleave;
 	f |= a_UNMAP_AFTER;
 
 	if(inbef != NULL){
-		if(!a_mmap(-1, inbef, "before", &c.d.dc_before_len, &c.d.dc_before_dat))
+		if(!a_mmap(inbef, "before", &c.d.dc_before_len, &c.d.dc_before_dat))
 			goto jleave;
 		f |= a_UNMAP_2ND;
 
@@ -369,7 +374,7 @@ main(int argc, char *argv[]){
 		c.p.pc_after_len = c.d.dc_after_len;
 		c.p.pc_max_allowed_restored_len = 0;
 
-		if(!a_mmap(-1, inpat, "patch", &c.p.pc_patch_len, &c.p.pc_patch_dat))
+		if(!a_mmap(inpat, "patch", &c.p.pc_patch_len, &c.p.pc_patch_dat))
 			goto jleave;
 		f |= a_UNMAP_2ND;
 
