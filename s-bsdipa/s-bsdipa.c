@@ -266,7 +266,7 @@ main(int argc, char *argv[]){
 	FILE *pfp;
 	int f, rv, noheader, fd;
 
-	emsg = targetname = NULL; /* UNINIT */
+	emsg = inbef = targetname = NULL; /* UNINIT */
 	f = a_NONE;
 
 	if(argc != 5)
@@ -494,17 +494,29 @@ jleave:
 	}
 
 	if(f & a_UNMAP_2ND){
+		void *vp;
+		size_t vl;
+
 		assert(!(f & a_FREE_2ND));
 		if(inbef != NULL)
-			munmap((void*)c.d.dc_before_dat, (size_t)c.d.dc_before_len + 1);
+			vp = (void*)c.d.dc_before_dat, vl = (size_t)c.d.dc_before_len;
 		else
-			munmap((void*)c.p.pc_patch_dat, (size_t)c.p.pc_patch_len + 1);
+			vp = (void*)c.p.pc_patch_dat, vl = (size_t)c.p.pc_patch_len;
+		munmap(vp, vl + 1);
 	}else if(f & a_FREE_2ND)
 		a_free((void*)c.p.pc_patch_dat);
 
-	if(f & a_UNMAP_AFTER)
-		munmap((void*)c.d.dc_after_dat, (size_t)c.d.dc_after_len + 1);
-#endif
+	if(f & a_UNMAP_AFTER){
+		void *vp;
+		size_t vl;
+
+		if(inbef != NULL)
+			vp = (void*)c.d.dc_after_dat, vl = (size_t)c.d.dc_after_len;
+		else
+			vp = (void*)c.p.pc_after_dat, vl = (size_t)c.p.pc_after_len;
+		munmap(vp, vl + 1);
+	}
+#endif /* !NDEBUG */
 
 	if((f & a_UNLINK) && unlink(argv[4]) == -1){
 		assert(rv != a_EX_OK);
