@@ -48,6 +48,7 @@
 	"and it uses libdivsufsort that is\n" \
 	"	Copyright (c) 2003 Yuta Mori All rights reserved.\n" \
 	"	SPDX-License-Identifier: MIT\n"
+/* L5E> */
 /*@ S-bsdipa copyright:
  *
  * Copyright (c) 2024 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
@@ -119,6 +120,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/* L5E< */
 #ifndef s_BSDIPA_LIB_H
 #define s_BSDIPA_LIB_H
 
