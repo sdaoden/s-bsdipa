@@ -218,7 +218,9 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 		s_bsdipa_off_t ctrl_len_max, scan, len, pos, lastscan, lastpos, lastoff, aftscore;
 		uint32_t ctrlno;
 		struct s_bsdipa_ctrl_chunk **ccpp, *ccp;
+		int isneq;
 
+		isneq = (aftlen != beflen);
 		ccpp = NULL;
 		ccp = NULL; /* xxx UNINIT() */
 		ctrlno = 0; /* xxx UNINIT() */
@@ -301,8 +303,13 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 					lenb -= lens;
 				}
 
-				for(i = 0; i < lenf; ++i)
-					*--diffp = befdat[lastscan + i] - aftdat[lastpos + i];
+				for(i = 0; i < lenf; ++i){
+					uint8_t u;
+
+					u = befdat[lastscan + i] - aftdat[lastpos + i];
+					isneq |= (u != 0);
+					*--diffp = u;
+				}
 				dcp->dc_diff_len += lenf;
 				assert(diffp > extrap);
 
@@ -344,6 +351,8 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 				lastoff = pos - scan;
 			}
 		}
+
+		dcp->dc_is_equal_data = !isneq;
 	}
 
 	dcp->dc_diff_dat = diffp;

@@ -26,6 +26,7 @@ version_and_contact 'c-lib/configh.sh';
 system 'cd c-lib; ./configh.sh s_BSDIPA_32=y';
 
 WriteMakefile(
+#	'OPTIMIZE' => '-g',
 	'NAME' => 'BsDiPa',
 	#'DISTNAME' => 'S-BsDiPa',
 	'VERSION' => $VERSION,

@@ -28,20 +28,21 @@ S-bsdipa -- create or apply binary difference patch
 
 	my ($b, $a) = ("\012\013\00\01\02\03\04\05\06\07" x 3,
 			"\010\011\012\013\014" x 4);
-	my $pz;
-	die 'sick' if BsDiPa::core_diff_zlib($b, $a, \$pz) ne BsDiPa::OK;
+	my $pz, $iseq;
+	die if BsDiPa::core_diff_zlib($b, $a, \$pz, undef, \$iseq) ne BsDiPa::OK;
+	die unless(!$iseq);
 	my $pr;
-	die 'sick2' if BsDiPa::core_diff_raw($b, $a, \$pr) ne BsDiPa::OK;
+	die if BsDiPa::core_diff_raw($b, $a, \$pr) ne BsDiPa::OK;
 
 		my $x = uncompress($pz);
-		die 'sick3' unless(($pr cmp $x) == 0);
+		die unless(($pr cmp $x) == 0);
 
 	my $rz;
-	die 'sick4' if BsDiPa::core_patch_zlib($a, $pz, \$rz) ne BsDiPa::OK;
+	die if BsDiPa::core_patch_zlib($a, $pz, \$rz) ne BsDiPa::OK;
 	my $rr;
-	die 'sick5' if BsDiPa::core_patch_raw($a, $pr, \$rr) ne BsDiPa::OK;
+	die if BsDiPa::core_patch_raw($a, $pr, \$rr) ne BsDiPa::OK;
 
-	die 'sick6' unless(($rz cmp $rr) == 0);
+	die unless(($rz cmp $rr) == 0);
 
 =head1 DESCRIPTION
 
@@ -54,7 +55,7 @@ The perl package only uses C<s_BSDIPA_32> mode (31-bit size limits).
 
 =over
 
-=item C<VERSION> (string, eg, '0.6.0')
+=item C<VERSION> (string, eg, '0.8.0')
 
 A version string.
 
@@ -83,18 +84,21 @@ Allocation failure.
 
 Any other error, like invalid argument.
 
-=item C<core_diff_zlib($before_sv, $after_sv, $patch_sv, $magic_window=0)>
+=item C<core_diff_zlib($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0)>
 
 Create a compressed binary diff
 from the memory backing C<$before_sv>
 to the memory backing C<$after_sv>,
 and place the result in the (de-)reference(d) C<$patch_sv>.
 On error C<undef> is stored if at least C<$patch_sv> is accessible.
-C<$magic_window> specifies lookaround bytes,
+The optional C<$magic_window> specifies lookaround bytes,
 if <=0 the built-in default is used (16 at the time of this writing);
 the already unreasonable value 4096 is the maximum supported.
+The optional reference C<$is_equal_data> will be set to 1
+if C<$before_sv> and C<$after_sv> represent identical data,
+to 0 otherwise; it is only defined on success.
 
-=item C<core_diff_raw($before_sv, $after_sv, $patch_sv, $magic_window=0)>
+=item C<core_diff_raw($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0)>
 
 Exactly like C<core_diff_zlib()>, but without compression.
 As compression is absolutely necessary, only meant for testing,

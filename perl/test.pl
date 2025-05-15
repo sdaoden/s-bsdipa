@@ -31,7 +31,10 @@ use BsDiPa;
 #print BsDiPa::COPYRIGHT;
 
 sub doit{
-	my ($t, $b, $a) = @_;
+	my ($t, $b, $a, $eq) = @_;
+
+	$eq = (defined $eq && $eq != 0);
+	my $iseq = 0;
 
 	my $pz = 0;
 	ok(BsDiPa::core_diff_zlib(undef, $a, \$pz) eq BsDiPa::INVAL);
@@ -42,6 +45,11 @@ sub doit{
 	ok(BsDiPa::core_diff_zlib($b, $a, $pz) eq BsDiPa::INVAL);
 	ok(BsDiPa::core_diff_zlib($b, $a, \$pz) eq BsDiPa::OK);
 	ok(defined $pz);
+	ok(BsDiPa::core_diff_zlib($b, $a, \$pz, undef, $iseq) eq BsDiPa::INVAL);
+	ok(!defined $pz);
+	ok(BsDiPa::core_diff_zlib($b, $a, \$pz, undef, \$iseq) eq BsDiPa::OK);
+	ok(defined $pz);
+	ok($eq == $iseq);
 
 	my $pr = 0;
 	ok(BsDiPa::core_diff_raw(undef, $a, \$pr) eq BsDiPa::INVAL);
@@ -52,6 +60,11 @@ sub doit{
 	ok(BsDiPa::core_diff_raw($b, $a, $pr) eq BsDiPa::INVAL);
 	ok(BsDiPa::core_diff_raw($b, $a, \$pr) eq BsDiPa::OK);
 	ok(defined $pr);
+	ok(BsDiPa::core_diff_raw($b, $a, \$pr, undef, $iseq) eq BsDiPa::INVAL);
+	ok(!defined $pr);
+	ok(BsDiPa::core_diff_raw($b, $a, \$pr, undef, \$iseq) eq BsDiPa::OK);
+	ok(defined $pr);
+	ok($eq == $iseq);
 
 	my $x = uncompress($pz);
 	ok(($pr cmp $x) == 0);
@@ -105,6 +118,7 @@ sub doit{
 sub ckit{
 	# Spaced so the several buffer size bongoos of s-bsdipa-io.h, ZLIB, drum
 	my ($b, $a);
+
 	($b, $a) = ("\012\013\00\01\02\03\04\05\06\07" x 3, "\010\011\012\013\014" x 4);
 	#print 'Tiny size: ', length($b), ' / ', length($a), "\n";
 	doit('tiny', $b, $a);
@@ -124,6 +138,37 @@ sub ckit{
 	($b, $a) = ("\012\013\00\01\02\03\04\05\06\07" x 120000, "\010\011\012\013\014" x 100000);
 	#print 'Bigger size: ', length($b), ' / ', length($a), "\n";
 	doit('bigger', $b, $a);
+
+	#
+	($b, $a) = ("\012\013\00\01\02\03\04" x 3, "\012\013\00\01\02\03\04" x 3);
+	#print 'Equal: ', length($b), ' / ', length($a), "\n";
+	doit('equal tiny', $b, $a, 1);
+
+	($b, $a) = ("\012\013\00\01\02\03\04" x 3000, "\012\013\00\01\02\03\04" x 3000);
+	#print 'Equal: ', length($b), ' / ', length($a), "\n";
+	doit('equal small', $b, $a, 1);
+
+	($b, $a) = ("\00" x 9000, "\00" x 9000);
+	#print 'Equal: ', length($b), ' / ', length($a), "\n";
+	doit('equal medium', $b, $a, 1);
+
+	#
+	($b, $a) = ("\012\013\00\01\02\03\04" x 3, "\012\013\00\01\02\03\04" x 3 . "\05");
+	#print 'Equal+1: ', length($b), ' / ', length($a), "\n";
+	doit('equal+1 tiny', $b, $a);
+
+	($b, $a) = ("\012\013\00\01\02\03\04" x 3000, "\012\013\00\01\02\03\04" x 3000 . "\05");
+	#print 'Equal+1: ', length($b), ' / ', length($a), "\n";
+	doit('equal+1 small', $b, $a);
+
+	#
+	($b, $a) = ("\012\013\00\01\02\03\04" x 3, "\013\00\01\02\03\04" . "\012\013\00\01\02\03\04" x 2);
+	#print 'Equal-1: ', length($b), ' / ', length($a), "\n";
+	doit('equal-1 tiny', $b, $a);
+
+	($b, $a) = ("\012\013\00\01\02\03\04" x 3000, "\013\00\01\02\03\04" . "\012\013\00\01\02\03\04" x 2999);
+	#print 'Equal-1: ', length($b), ' / ', length($a), "\n";
+	doit('equal-1 small', $b, $a);
 }
 
 ckit();

@@ -19,6 +19,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/* assert()ions (otherwise uncomment OPTIMIZE in Makefile.PL) */
 /*#define DEBUGGING*/
 #include "EXTERN.h"
 #include "perl.h"
@@ -52,7 +53,7 @@ static IV a_try_oneshot = -1;
 static void *a_alloc(size_t size);
 static void a_free(void *vp);
 
-static SV *a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_window);
+static SV *a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_window, SV *is_equal_data);
 static enum s_bsdipa_state a_core_diff__write(void *user_cookie, uint8_t const *dat, s_bsdipa_off_t len,
 		s_bsdipa_off_t is_last);
 
@@ -73,9 +74,9 @@ a_free(void *vp){
 }
 
 static SV *
-a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_window){
+a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_window, SV *is_equal_data){
 	struct s_bsdipa_diff_ctx d;
-	SV *pref;
+	SV *pref, *iseq;
 	enum s_bsdipa_state s;
 
 	s = s_BSDIPA_INVAL;
@@ -101,8 +102,15 @@ a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_windo
 		i = SvIV(magic_window);
 		if(i > 4096) /* <> docu! */
 			goto jleave;
-		d.dc_magic_window = (s_bsdipa_off_t)i;
+		d.dc_magic_window = (int32_t)i;
 	}
+
+	if(is_equal_data == NULL)
+		iseq = NULL;
+	else if(!SvROK(is_equal_data))
+		goto jleave;
+	else
+		iseq = SvRV(is_equal_data);
 
 	d.dc_mem.mc_alloc = &a_alloc;
 	d.dc_mem.mc_free = &a_free;
@@ -114,6 +122,9 @@ a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_windo
 	s = s_bsdipa_diff(&d);
 	if(s != s_BSDIPA_OK)
 		goto jdone;
+
+	if(iseq != NULL)
+		SvIV_set(iseq, d.dc_is_equal_data);
 
 	SvPVCLEAR(pref);
 	if(what == s_BSDIPA_IO_ZLIB)
@@ -321,24 +332,26 @@ OUTPUT:
 	RETVAL
 
 SV *
-core_diff_raw(before_sv, after_sv, patch_sv, magic_window=NULL)
+core_diff_raw(before_sv, after_sv, patch_sv, magic_window=NULL, is_equal_data=NULL)
 	SV *before_sv
 	SV *after_sv
 	SV *patch_sv
 	SV *magic_window
+	SV *is_equal_data
 CODE:
-	RETVAL = a_core_diff(s_BSDIPA_IO_RAW, before_sv, after_sv, patch_sv, magic_window);
+	RETVAL = a_core_diff(s_BSDIPA_IO_RAW, before_sv, after_sv, patch_sv, magic_window, is_equal_data);
 OUTPUT:
 	RETVAL
 
 SV *
-core_diff_zlib(before_sv, after_sv, patch_sv, magic_window=NULL)
+core_diff_zlib(before_sv, after_sv, patch_sv, magic_window=NULL, is_equal_data=NULL)
 	SV *before_sv
 	SV *after_sv
 	SV *patch_sv
 	SV *magic_window
+	SV *is_equal_data
 CODE:
-	RETVAL = a_core_diff(s_BSDIPA_IO_ZLIB, before_sv, after_sv, patch_sv, magic_window);
+	RETVAL = a_core_diff(s_BSDIPA_IO_ZLIB, before_sv, after_sv, patch_sv, magic_window, is_equal_data);
 OUTPUT:
 	RETVAL
 

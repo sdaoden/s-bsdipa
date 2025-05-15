@@ -302,10 +302,10 @@ main(int argc, char *argv[]){
 			l = strtol(targetname, &ep, 10);
 			if(targetname == ep || *ep != '\0')
 				goto jeuse;
-			if(l <= 0 || l > (long)sizeof(void*) * 1000)
+			if(l <= 0 || l > 4096) /* <> help output! */
 				goto jeuse;
 
-			c.d.dc_magic_window = (s_bsdipa_off_t)l;
+			c.d.dc_magic_window = (int32_t)l;
 		}else
 			goto jeuse;
 
@@ -529,18 +529,29 @@ jleave:
 		a_CLOCK_SUB(&te2, &ts2);
 		fprintf(stderr,
 			/* (xxx since we print difference long should be ok)*/
-			"# %ld result bytes | %zu allocs: all=%zu peek=%zu"
+			"# %ld result bytes%s | %zu allocs: all=%zu peek=%zu"
 # ifndef NDEBUG
 				" curr=%zu"
 # endif
-			" bytes\n# Algorithm %ld:%03ld secs, I/O %ld:%03ld secs\n",
+			"\n# Algorithm %ld:%03ld secs, I/O %ld:%03ld secs\n",
 			(long)a_reslen,
+			(inbef != NULL && c.d.dc_is_equal_data ? " | equal inputs" : ""),
 			a_mem_allno, a_mem_all, a_mem_peek,
 # ifndef NDEBUG
 			a_mem_curr,
 # endif
 			(long)a_CLOCK_SEC(&te), (long)a_CLOCK_SSEC_2_1000th(&te),
 			(long)a_CLOCK_SEC(&te2), (long)a_CLOCK_SSEC_2_1000th(&te2));
+
+# ifndef NDEBUG
+		if(inbef != NULL){
+			long x;
+
+			x = (long)(c.d.dc_ctrl_len / sizeof(struct s_bsdipa_ctrl_triple));
+			fprintf(stderr, "# data: ctrl=%ld (%ld entr%s) diff=%ld extra=%ld\n",
+				c.d.dc_ctrl_len, x, (x == 1 ? "y" : "ies"), c.d.dc_diff_len, c.d.dc_extra_len);
+		}
+# endif
 	}
 #endif
 
@@ -558,7 +569,7 @@ jeuse:
 		"The first uses \"patch\" to create \"restored\" from \"after\".\n"
 		"The latter create \"patch\" from the difference of \"after\" and \"before\";\n"
 		"they differ in the size of the \"magic window\": diff uses the built-in value,\n"
-		"xdiff uses 16, whereas diff/VAL expects a positive integer to be used instead.\n"
+		"xdiff uses 16, diff/VAL uses VAL, a positive integer <= 4096.\n"
 		"An existing target is overwritten if the subcommand is prefixed with \"!\".\n"
 		"(If above subcommands are prefixed by \"=\" the otherwise expected / produced\n"
 		"filetype identification header is omitted, and only raw data is processed.)\n"
