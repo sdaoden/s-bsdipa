@@ -549,7 +549,8 @@ jleave:
 
 			x = (long)(c.d.dc_ctrl_len / sizeof(struct s_bsdipa_ctrl_triple));
 			fprintf(stderr, "# data: ctrl=%ld (%ld entr%s) diff=%ld extra=%ld\n",
-				c.d.dc_ctrl_len, x, (x == 1 ? "y" : "ies"), c.d.dc_diff_len, c.d.dc_extra_len);
+				(long int)c.d.dc_ctrl_len, x, (x == 1 ? "y" : "ies"),
+				(long int)c.d.dc_diff_len, (long int)c.d.dc_extra_len);
 		}
 # endif
 	}
