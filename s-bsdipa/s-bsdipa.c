@@ -292,8 +292,6 @@ main(int argc, char *argv[]){
 
 		if(!strcmp(targetname, "diff"))
 			c.d.dc_magic_window = 0;
-		else if(!strcmp(targetname, "xdiff"))
-			c.d.dc_magic_window = 16;
 		else if(!strncmp(targetname, "diff/", sizeof("diff/") -1)){
 			char *ep;
 			long l;
@@ -554,7 +552,7 @@ jleave:
 		}
 # endif
 	}
-#endif
+#endif /* a_STATS */
 
 	return rv;
 jeuse:
@@ -564,13 +562,12 @@ jeuse:
 		"\n"
 		"  " a_NAME " [!]patch    after  patch restored\n"
 		"  " a_NAME " [!]diff     before after patch\n"
-		"  " a_NAME " [!]xdiff    before after patch\n"
 		"  " a_NAME " [!]diff/VAL before after patch\n"
 		"\n"
 		"The first uses \"patch\" to create \"restored\" from \"after\".\n"
 		"The latter create \"patch\" from the difference of \"after\" and \"before\";\n"
 		"they differ in the size of the \"magic window\": diff uses the built-in value,\n"
-		"xdiff uses 16, diff/VAL uses VAL, a positive integer <= 4096.\n"
+		"diff/VAL uses VAL, a positive integer <= 4096.\n"
 		"An existing target is overwritten if the subcommand is prefixed with \"!\".\n"
 		"(If above subcommands are prefixed by \"=\" the otherwise expected / produced\n"
 		"filetype identification header is omitted, and only raw data is processed.)\n"
@@ -583,6 +580,13 @@ jeuse:
 #endif
 #ifdef s_BSDIPA_32
 		". Reduced overhead: 32-bit file sizes and patch control data.\n"
+#endif
+#ifndef NDEBUG
+		". Debug-enabled code: deallocations etc"
+# if a_STATS
+			", more statistics"
+# endif
+			".\n"
 #endif
 		". Bugs/Contact via " s_BSDIPA_CONTACT ".\n");
 	rv = a_EX_USAGE;
