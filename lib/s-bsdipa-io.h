@@ -1,6 +1,6 @@
 /*@ s-bsdipa-io: I/O (compression) layer for s-bsdipa-lib.
  *@ Use as follows:
- *@ - Define s_BSDIPA_IO to one of s_BSDIPA_IO_(RAW|ZLIB),
+ *@ - Define s_BSDIPA_IO to one of s_BSDIPA_IO_(RAW|ZLIB|XZ),
  *@ - Define s_BSDIPA_IO_READ and/or s_BSDIPA_IO_WRITE, as desired,
  *@ - and include this header.
  *@ It then provides the according s_BSDIPA_IO_NAME preprocessor literal
@@ -14,9 +14,17 @@
  *@   is serialized, or serialized data is turned into a complete data set
  *@   that then can be fed into s_bsdipa_patch().
  *@   (A custom I/O (compression) layer may be less memory hungry.)
+ *@ - s_BSDIPA_IO == s_BSDIPA_IO_RAW:
+ *@   -- no checksum.
  *@ - s_BSDIPA_IO == s_BSDIPA_IO_ZLIB:
  *@   -- s_BSDIPA_IO_ZLIB_LEVEL may be defined as the "level" argument of
  *@      zlib's deflateInit() (default is 9).
+ *@   -- no checksum.
+ *@ - s_BSDIPA_IO == s_BSDIPA_IO_XZ:
+ *@   -- s_BSDIPA_IO_XZ_PRESET may be defined as the "preset" argument of
+ *@      lzma_easy_encoder() (default is 4).
+ *@   -- s_BSDIPA_IO_XZ_CHECK may be defined as the "check" argument of
+ *@      lzma_easy_encoder() (default is LZMA_CHECK_CRC32).
  *@ - the header may be included multiple times, shall multiple BSDIPA_IO
  *@   variants be desired.  Still, only the _IO_LINKAGE as well as _IO_READ
  *@   and _IO_WRITE of the first inclusion are valid.
@@ -44,8 +52,11 @@
 #elif s_BSDIPA_IO_H == 0
 # undef s_BSDIPA_IO_H
 # define s_BSDIPA_IO_H 1
+#elif s_BSDIPA_IO_H == 1
+# undef s_BSDIPA_IO_H
+# define s_BSDIPA_IO_H 2
 #else
-# error Only two I/O layers exist.
+# error Only three I/O layers exist.
 #endif
 
 #if s_BSDIPA_IO_H == 0
@@ -64,6 +75,7 @@ extern "C" {
 /* Compression types (preprocessor so sources can adapt) */
 # define s_BSDIPA_IO_RAW 0
 # define s_BSDIPA_IO_ZLIB 1
+# define s_BSDIPA_IO_XZ 2
 
 # ifndef s_BSDIPA_IO_LINKAGE
 #  define s_BSDIPA_IO_LINKAGE static
@@ -283,7 +295,7 @@ jolenmax:
 
 		flusht = Z_NO_FLUSH;
 		if(x == 0){
-			zsp->next_in = (Bytef*)&dcp->dc_header;
+			zsp->next_in = (Bytef*)dcp->dc_header;
 			zsp->avail_in = sizeof(dcp->dc_header);
 			x = 1;
 		}else if(x == 1){
@@ -522,7 +534,343 @@ s__bsdipa_io_zlib_free(voidpf my_cookie, voidpf dat){
 # undef s_BSDIPA_IO_ZLIB_LEVEL
 /* }}} */
 
-#else /* _IO_ZLIB */
+#elif s_BSDIPA_IO == s_BSDIPA_IO_XZ /* _IO_ZLIB {{{ */
+# define s_BSDIPA_IO_NAME "XZ"
+
+# include <assert.h>
+
+# include <lzma.h>
+
+# ifndef s_BSDIPA_IO_XZ_PRESET
+#  define s_BSDIPA_IO_XZ_PRESET 4
+# endif
+# ifndef s_BSDIPA_IO_XZ_CHECK
+#  define s_BSDIPA_IO_XZ_CHECK LZMA_CHECK_CRC32
+# endif
+
+ /* For testing purposes */
+# define s__BSDIPA_IO_XZ_LIMIT (INT32_MAX - 1)
+
+static void *s__bsdipa_io_xz_alloc(void *my_cookie, size_t no, size_t size);
+static void s__bsdipa_io_xz_free(void *my_cookie, void *dat);
+
+# ifdef s_BSDIPA_IO_WRITE /* {{{ */
+s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
+s_bsdipa_io_write_xz(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *cookie, int try_oneshot){
+	lzma_stream zs, *zsp;
+	lzma_allocator za;
+	struct s_bsdipa_ctrl_chunk *ccp;
+	char x;
+	enum s_bsdipa_state rv;
+	uint8_t *obuf;
+	size_t olen;
+	s_bsdipa_off_t diflen, extlen;
+
+	memset(zsp = &zs, 0, sizeof(zs));
+	za.alloc = &s__bsdipa_io_xz_alloc;
+	za.free = &s__bsdipa_io_xz_free;
+	za.opaque = (void*)&dcp->dc_mem;
+	zs.allocator = &za;
+
+	switch(lzma_easy_encoder(zsp, s_BSDIPA_IO_XZ_PRESET, s_BSDIPA_IO_XZ_CHECK)){
+	case LZMA_OK: break;
+	case LZMA_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jleave;
+	/* LZMA_OPTIONS_ERROR: */
+	/* LZMA_UNSUPPORTED_CHECK: */
+	/* LZMA_PROG_ERROR: */
+	default: rv = s_BSDIPA_INVAL; goto jleave;
+	}
+
+	diflen = dcp->dc_diff_len;
+	extlen = dcp->dc_extra_len;
+
+	/* All lengths fit in s_BSDIPA_OFF_MAX, which is signed: addition and cast ok */
+	olen = (size_t)(sizeof(dcp->dc_header) + dcp->dc_ctrl_len + diflen + extlen);
+	if(try_oneshot){
+		size_t ulo;
+
+		ulo = olen; /* XXX check overflow? s_bsdipa_off_t>size_t case? */
+		ulo = lzma_stream_buffer_bound(ulo);
+		if(ulo >= s_BSDIPA_OFF_MAX){
+			try_oneshot = 0;
+			goto jolenmax;
+		}
+		/* Add "one additional byte" already here in case buffer takeover succeeds */
+		if(ulo >= (size_t)-1 - 1){
+			try_oneshot = 0;
+			goto jolenmax;
+		}
+		olen = ++ulo;
+	}else if(olen <= 1000 * 150)
+		olen = 4096 * 4;
+	else if(olen <= 1000 * 1000)
+		olen = 4096 * 31;
+	else
+jolenmax:
+		olen = 4096 * 244;
+
+	obuf = (uint8_t*)s__bsdipa_io_xz_alloc((void*)&dcp->dc_mem, 1, olen);
+	if(obuf == NULL){
+		rv = s_BSDIPA_NOMEM;
+		goto jdone;
+	}
+	olen -= (try_oneshot != 0);
+
+	zsp->next_out = obuf;
+	zsp->avail_out = olen;
+	ccp = dcp->dc_ctrl;
+
+	for(x = 0;;){
+		lzma_action flusht;
+
+		flusht = LZMA_RUN;
+		if(x == 0){
+			zsp->next_in = dcp->dc_header;
+			zsp->avail_in = sizeof(dcp->dc_header);
+			x = 1;
+		}else if(x == 1){
+			if(ccp != NULL){
+				zsp->next_in = ccp->cc_dat;
+				zsp->avail_in = (size_t)ccp->cc_len;
+				ccp = ccp->cc_next;
+			}
+			if(ccp == NULL)
+				x = 2;
+		}else if(x < 4){
+			if(x == 2)
+				zsp->next_in = dcp->dc_diff_dat;
+			if(diflen > s__BSDIPA_IO_XZ_LIMIT){
+				zsp->avail_in = s__BSDIPA_IO_XZ_LIMIT;
+				diflen -= s__BSDIPA_IO_XZ_LIMIT;
+				x = 3;
+			}else{
+				zsp->avail_in = (size_t)diflen;
+				x = 4;
+			}
+		}else if(x < 6){
+			if(x == 4)
+				zsp->next_in = dcp->dc_extra_dat;
+			if(extlen > s__BSDIPA_IO_XZ_LIMIT){
+				zsp->avail_in = s__BSDIPA_IO_XZ_LIMIT;
+				extlen -= s__BSDIPA_IO_XZ_LIMIT;
+				x = 5;
+			}else{
+				zsp->avail_in = (size_t)extlen;
+				x = 6;
+			}
+		}else{
+			zsp->avail_in = 0; /* xxx redundant */
+			flusht = LZMA_FINISH;
+			x = 7;
+		}
+
+		if(zsp->avail_in > 0 || flusht == LZMA_FINISH) for(;;){
+			s_bsdipa_off_t z;
+			lzma_ret y;
+
+			y = lzma_code(zsp, flusht);
+
+			switch(y){
+			case LZMA_OK: break;
+			case LZMA_MEM_ERROR: rv = s_BSDIPA_NOMEM; break;
+			case LZMA_STREAM_END: assert(flusht == LZMA_FINISH); break;
+			case LZMA_BUF_ERROR: assert(zsp->avail_out == 0); break;
+			default: rv = s_BSDIPA_INVAL; goto jdone;
+			}
+
+			z = olen - zsp->avail_out;
+			if(y == LZMA_STREAM_END || (z > 0 && zsp->avail_out == 0)){
+				int xarg;
+
+				/* */
+				if(y != LZMA_STREAM_END){
+					if(try_oneshot < 0)
+						try_oneshot = 1;
+					xarg = 0;
+				}else
+					xarg = (try_oneshot < 0) ? -(s_bsdipa_off_t)++olen : 1;
+
+				if((rv = (*hook)(cookie, obuf, z, xarg)) != s_BSDIPA_OK)
+					goto jdone;
+
+				if(xarg){
+					/* Did we transfer buffer ownership? */
+					if(xarg < 0)
+						obuf = NULL;
+					goto jdone;
+				}
+				zsp->next_out = obuf;
+				zsp->avail_out = olen;
+			}
+
+			if(flusht == LZMA_FINISH){
+				assert(y != LZMA_STREAM_END);
+				continue;
+			}
+			if(zsp->avail_in == 0)
+				break;
+		}
+		assert(x != 7);
+	}
+
+jdone:
+	if(obuf != NULL)
+		s__bsdipa_io_xz_free((void*)&dcp->dc_mem, obuf);
+
+	lzma_end(zsp);
+jleave:
+	return rv;
+}
+# endif /* }}} s_BSDIPA_IO_WRITE */
+
+# ifdef s_BSDIPA_IO_READ /* {{{ */
+s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
+s_bsdipa_io_read_xz(struct s_bsdipa_patch_ctx *pcp){
+	uint8_t hbuf[sizeof(struct s_bsdipa_header)];
+	lzma_stream zs, *zsp;
+	lzma_allocator za;
+	s_bsdipa_off_t reslen;
+	enum s_bsdipa_state rv;
+	uint64_t patlen;
+
+	pcp->pc_restored_dat = NULL;
+	patlen = pcp->pc_patch_len;
+
+	memset(zsp = &zs, 0, sizeof(zs));
+	za.alloc = &s__bsdipa_io_xz_alloc;
+	za.free = &s__bsdipa_io_xz_free;
+	za.opaque = (void*)&pcp->pc_mem;
+	zs.allocator = &za;
+
+	zs.next_in = pcp->pc_patch_dat;
+	zs.avail_in = (patlen > s__BSDIPA_IO_XZ_LIMIT) ? s__BSDIPA_IO_XZ_LIMIT : (size_t)patlen;
+	patlen -= zs.avail_in;
+
+	switch(lzma_stream_decoder(zsp, UINT64_MAX, LZMA_FAIL_FAST)){
+	case LZMA_OK: break;
+	case LZMA_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jdone;
+	/* LZMA_OPTIONS_ERROR: */
+	/* LZMA_PROG_ERROR: */
+	default: rv = s_BSDIPA_INVAL; goto jdone;
+	}
+
+	zsp->next_out = hbuf;
+	zsp->avail_out = sizeof(hbuf);
+
+	switch(lzma_code(zsp, LZMA_RUN)){
+	case LZMA_OK: break;
+	case LZMA_STREAM_END: break;
+	case LZMA_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jdone;
+	default: rv = s_BSDIPA_INVAL; goto jdone;
+	}
+	if(zsp->avail_out != 0){
+		rv = s_BSDIPA_INVAL;
+		goto jdone;
+	}
+
+	rv = s_bsdipa_patch_parse_header(&pcp->pc_header, hbuf);
+	if(rv != s_BSDIPA_OK)
+		goto jdone;
+
+	/* Do not perform any action at all on size excess */
+	if(pcp->pc_max_allowed_restored_len != 0 &&
+			pcp->pc_max_allowed_restored_len < (uint64_t)pcp->pc_header.h_before_len){
+		rv = s_BSDIPA_FBIG;
+		goto jdone;
+	}
+
+	/* Guaranteed to work! */
+	reslen = pcp->pc_header.h_ctrl_len + pcp->pc_header.h_diff_len + pcp->pc_header.h_extra_len;
+
+	pcp->pc_restored_len = reslen;
+	pcp->pc_restored_dat = (uint8_t*)s__bsdipa_io_xz_alloc(&pcp->pc_mem, 1, (size_t)reslen);
+	if(pcp->pc_restored_dat == NULL){
+		rv = s_BSDIPA_NOMEM;
+		goto jdone;
+	}
+
+	zsp->next_out = pcp->pc_restored_dat;
+	zsp->avail_out = (size_t)((reslen > s__BSDIPA_IO_XZ_LIMIT) ? s__BSDIPA_IO_XZ_LIMIT : reslen);
+	reslen -= zsp->avail_out;
+
+	for(;;){
+		lzma_ret y;
+		lzma_action x;
+
+		x = (reslen == 0 && patlen == 0) ? LZMA_FINISH : LZMA_RUN;
+		y = lzma_code(zsp, x);
+
+		switch(y){
+		case LZMA_OK: break;
+		case LZMA_BUF_ERROR:
+			if(x == LZMA_FINISH){
+				rv = s_BSDIPA_INVAL;
+				goto jdone;
+			}
+			break;
+		case LZMA_STREAM_END:
+			if(x == LZMA_FINISH){
+				rv = s_BSDIPA_OK;
+				goto jdone;
+			}
+			break;
+		case LZMA_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jdone;
+		default: rv = s_BSDIPA_INVAL; goto jdone;
+		}
+
+		if(zsp->avail_out == 0){
+			zsp->avail_out = (size_t)((reslen > s__BSDIPA_IO_XZ_LIMIT) ? s__BSDIPA_IO_XZ_LIMIT : reslen);
+			reslen -= (s_bsdipa_off_t)zsp->avail_out;
+		}
+		if(zsp->avail_in == 0){
+			zsp->avail_in = (size_t)((patlen > s__BSDIPA_IO_XZ_LIMIT) ? s__BSDIPA_IO_XZ_LIMIT : patlen);
+			patlen -= (s_bsdipa_off_t)zsp->avail_in;
+		}
+	}
+
+jdone:
+	lzma_end(zsp);
+
+	if(rv != s_BSDIPA_OK && pcp->pc_restored_dat != NULL){
+		s__bsdipa_io_xz_free(&pcp->pc_mem, pcp->pc_restored_dat);
+		pcp->pc_restored_dat = NULL;
+	}
+
+	return rv;
+}
+# endif /* }}} s_BSDIPA_IO_READ */
+
+static void *
+s__bsdipa_io_xz_alloc(void *my_cookie, size_t no, size_t size){
+	void *rv;
+	size_t memsz;
+	struct s_bsdipa_memory_ctx *mcp;
+
+	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
+	memsz = no * size;
+
+	rv = (mcp->mc_alloc != NULL) ? (*mcp->mc_alloc)(memsz) : (*mcp->mc_custom_alloc)(mcp->mc_custom_cookie, memsz);
+
+	return rv;
+}
+
+static void
+s__bsdipa_io_xz_free(void *my_cookie, void *dat){
+	struct s_bsdipa_memory_ctx *mcp;
+
+	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
+
+	/* */
+	if(dat != NULL)
+		(mcp->mc_alloc != NULL) ? (*mcp->mc_free)(dat) : (*mcp->mc_custom_free)(mcp->mc_custom_cookie, dat);
+}
+
+# undef s__BSDIPA_IO_XZ_LIMIT
+# undef s_BSDIPA_IO_XZ_CHECK
+# undef s_BSDIPA_IO_XZ_PRESET
+/* }}} */
+
+#else /* _IO_XZ */
 # error Unknown s_BSDIPA_IO value
 #endif
 

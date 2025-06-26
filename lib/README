@@ -97,7 +97,7 @@ v0.5.0, 2024-12-26: (first release)
 DATA POINTS
 -----------
 
-Some data points follow.  (32 byte "magic window" is a good fit.)
+ZLIB data points follow; liblzma (XZ Utils) support was added later.
 
 Input data files:
   z/0: empty files.
