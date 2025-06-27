@@ -9,14 +9,12 @@ create or apply binary difference patch.  In general:
   and s_bsdipa_patch() functions to create and apply patches.
   Ie, (for example mmap(2)ed) memory in, (heap) memory out.
 
-- the actually necessary compression / storage preparation can be
-  achieved easily by including s-bsdipa-io.h after defining s_BSDIPA_IO
-  as desired, and using s_bsdipa_io_write() and _read().  These still do
-  not perform direct I/O, but call a supplied hook with fully prepared
-  buffers, and store in (heap) memory, respectively.
-
-  (As said there, linker flags for the chosen compression method
-  or library must be provided by whoever uses the s-bsdipa-io.h layer.)
+- necessary compression / storage preparation can (could) be achieved
+  easily by including s-bsdipa-io.h after defining s_BSDIPA_IO as
+  desired, followed by using the according s_bsdipa_io_write_*() and
+  _read_*() functions; These still do not perform direct I/O, but call
+  a supplied hook with fully prepared buffers or store in (heap) memory,
+  respectively.  Multiple _IO methods are provided.
 
 - in general the lib/ directory of the source repository is self-
   contained, and may be copied for inclusion in other projects.
@@ -24,12 +22,13 @@ create or apply binary difference patch.  In general:
 - please see the introductional header comments of s-bsdipa-lib.h and
   s-bsdipa-io.h for more.
 
-- the directory s-bsdipa contains a self-contained (static) (example)
-  program which can create and apply patches (like a combined FreeBSD
-  bsdiff and bspatch program).
+- the directory s-bsdipa contains a self-contained (except for
+  compression libraries) (example) program which can create and apply
+  patches (like a combined FreeBSD bsdiff and bspatch program).
   It times execution and tracks memory usage on stderr.
 
 - the directory perl contains the self-contained BsDiPa CPAN module.
+  (Perl ships with ZLIB, liblzma/XZ support is compile-time detected.)
 
 Licenses (full text included in s-bsdipa-lib.h):
   libdivsufsort(/LICENSE): MIT
