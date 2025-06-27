@@ -16,11 +16,11 @@
  *@   (A custom I/O (compression) layer may be less memory hungry.)
  *@ - s_BSDIPA_IO == s_BSDIPA_IO_RAW:
  *@   -- no checksum.
- *@ - s_BSDIPA_IO == s_BSDIPA_IO_ZLIB:
+ *@ - s_BSDIPA_IO == s_BSDIPA_IO_ZLIB (-lz):
  *@   -- s_BSDIPA_IO_ZLIB_LEVEL may be defined as the "level" argument of
  *@      zlib's deflateInit() (default is 9).
  *@   -- checksum Adler-32 (what inflate() gives you).
- *@ - s_BSDIPA_IO == s_BSDIPA_IO_XZ:
+ *@ - s_BSDIPA_IO == s_BSDIPA_IO_XZ (-llzma):
  *@   -- s_BSDIPA_IO_XZ_PRESET may be defined as the "preset" argument of
  *@      lzma_easy_encoder() (default is 4).
  *@   -- s_BSDIPA_IO_XZ_CHECK may be defined as the "check" argument of
@@ -109,11 +109,15 @@ typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *cookie, uint8_t const
  * (.pc_restored_dat will be overwritten by s_bsdipa_patch().) */
 /*s_BSDIPA_IO_LINKAGE enum s_bsdipa_state s_bsdipa_io_read_*(struct s_bsdipa_patch_ctx *pcp);*/
 # endif
-#endif
+#endif /* s_BSDIPA_IO_H==0 */
 
 #undef s_BSDIPA_IO_NAME
 #if !defined s_BSDIPA_IO || s_BSDIPA_IO == s_BSDIPA_IO_RAW /* {{{ */
 # undef s_BSDIPA_IO
+# ifdef s__BSDIPA_IO_RAW
+#  error s_BSDIPA_IO==s_BSDIPA_IO_RAW already defined
+# endif
+# define s__BSDIPA_IO_RAW
 # define s_BSDIPA_IO s_BSDIPA_IO_RAW
 # define s_BSDIPA_IO_NAME "RAW"
 
@@ -214,6 +218,11 @@ jleave:
 /* }}} */
 
 #elif s_BSDIPA_IO == s_BSDIPA_IO_ZLIB /* _IO_RAW {{{ */
+/*# undef s_BSDIPA_IO*/
+# ifdef s__BSDIPA_IO_ZLIB
+#  error s_BSDIPA_IO==s_BSDIPA_IO_ZLIB already defined
+# endif
+# define s__BSDIPA_IO_ZLIB
 # define s_BSDIPA_IO_NAME "ZLIB"
 
 # include <assert.h>
@@ -538,6 +547,11 @@ s__bsdipa_io_zlib_free(voidpf my_cookie, voidpf dat){
 /* }}} */
 
 #elif s_BSDIPA_IO == s_BSDIPA_IO_XZ /* _IO_ZLIB {{{ */
+/*# undef s_BSDIPA_IO*/
+# ifdef s__BSDIPA_IO_XZ
+#  error s_BSDIPA_IO==s_BSDIPA_IO_XZ already defined
+# endif
+# define s__BSDIPA_IO_XZ
 # define s_BSDIPA_IO_NAME "XZ"
 
 # include <assert.h>
@@ -867,7 +881,7 @@ s__bsdipa_io_xz_free(void *my_cookie, void *dat){
 
 	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
 
-	/* */
+	/* (lzma/base.h does not say, but not only what came via alloc()..) */
 	if(dat != NULL)
 		(mcp->mc_alloc != NULL) ? (*mcp->mc_free)(dat) : (*mcp->mc_custom_free)(mcp->mc_custom_cookie, dat);
 }

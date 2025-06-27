@@ -31,7 +31,6 @@
 #define s_BSDIPA_IO_WRITE
 /**/
 #define s_BSDIPA_IO s_BSDIPA_IO_ZLIB
-/*#define s_BSDIPA_IO_ZLIB_LEVEL 9*/
 #include "c-lib/s-bsdipa-io.h"
 /**/
 #if s__BSDIPA_XZ
