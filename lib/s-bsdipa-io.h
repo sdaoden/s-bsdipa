@@ -19,12 +19,13 @@
  *@ - s_BSDIPA_IO == s_BSDIPA_IO_ZLIB:
  *@   -- s_BSDIPA_IO_ZLIB_LEVEL may be defined as the "level" argument of
  *@      zlib's deflateInit() (default is 9).
- *@   -- no checksum.
+ *@   -- checksum Adler-32 (what inflate() gives you).
  *@ - s_BSDIPA_IO == s_BSDIPA_IO_XZ:
  *@   -- s_BSDIPA_IO_XZ_PRESET may be defined as the "preset" argument of
  *@      lzma_easy_encoder() (default is 4).
  *@   -- s_BSDIPA_IO_XZ_CHECK may be defined as the "check" argument of
- *@      lzma_easy_encoder() (default is LZMA_CHECK_CRC32).
+ *@      lzma_easy_encoder() (default is LZMA_CHECK_CRC32 for s_BSDIPA_32, and
+ *@      LZMA_CHECK_CRC64 otherwise).
  *@ - the header may be included multiple times, shall multiple BSDIPA_IO
  *@   variants be desired.  Still, only the _IO_LINKAGE as well as _IO_READ
  *@   and _IO_WRITE of the first inclusion are valid.
@@ -86,10 +87,10 @@ extern "C" {
 # ifdef s_BSDIPA_IO_WRITE
 /* I/O write hook.
  * If is_last is set the hook will not be called again; in this case len may be 0.
- * If try_oneshot is set and it matters to the I/O layer then it shall try to invoke hook only once;
- * if try_oneshot is given negative, and if the layer succeeds to comply, then is_last will also be
+ * If try_oneshot was given to an I/O layer to which it matters it will try to invoke the hook only once;
+ * if a negative try_oneshot was given, and if the layer succeeds to comply, then is_last will also be
  * negative and the ownership of dat is transferred to the hook by definition -- and only then:
- * in fact the absolute value of is_last is the buffer size, of which len bytes are useful.
+ * in fact the absolute value of is_last is the buffer size, of which len bytes are useful;
  * Note that *only* in this case the buffer size is at least one greater than len! */
 typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *cookie, uint8_t const *dat, s_bsdipa_off_t len,
 		s_bsdipa_off_t is_last);
@@ -98,12 +99,14 @@ typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *cookie, uint8_t const
 # endif
 
 # ifdef s_BSDIPA_IO_READ
-/* I/O read hook.  It is assumed that pcp->pc_patch_dat and .pc_patch_len represent the entire (constant) patch data.
- * Output will be allocated via .pc_mem and stored in .pc_restored_dat and .pc_restored_len as a continuous chunk.
+/* I/O read hook.
+ * It is assumed that pcp->pc_patch_dat and .pc_patch_len represent the entire (constant) patch data.
+ * Output is allocated via .pc_mem, and stored in .pc_restored_dat and .pc_restored_len as a continuous chunk.
  * .pc_max_allowed_restored_len must also be set as it is already evaluated as documented.
  * On error that memory, if any, will be freed, and .pc_restored_dat will be NULL.
  * On success .pc_header is filled in; it is up to the user to update .pc_patch* with the .pc_restored* fields
- * and call s_bsdipa_patch() to apply the real patch.  (.pc_restored_dat will be overwritten by s_bsdipa_patch().) */
+ * and call s_bsdipa_patch() to apply the real patch.
+ * (.pc_restored_dat will be overwritten by s_bsdipa_patch().) */
 /*s_BSDIPA_IO_LINKAGE enum s_bsdipa_state s_bsdipa_io_read_*(struct s_bsdipa_patch_ctx *pcp);*/
 # endif
 #endif
@@ -545,7 +548,11 @@ s__bsdipa_io_zlib_free(voidpf my_cookie, voidpf dat){
 #  define s_BSDIPA_IO_XZ_PRESET 4
 # endif
 # ifndef s_BSDIPA_IO_XZ_CHECK
-#  define s_BSDIPA_IO_XZ_CHECK LZMA_CHECK_CRC32
+#  ifdef s_BSDIPA_32
+#   define s_BSDIPA_IO_XZ_CHECK LZMA_CHECK_CRC32
+#  else
+#   define s_BSDIPA_IO_XZ_CHECK LZMA_CHECK_CRC64
+#  endif
 # endif
 
  /* For testing purposes */
