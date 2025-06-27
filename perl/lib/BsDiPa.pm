@@ -78,6 +78,7 @@ A multiline string containing a copyright license summary.
 =item C<HAVE_XZ> (number / boolean)
 
 Returns 1 if support for liblzma (XZ) is available, 0 otherwise.
+This is a compile time detection feature.
 
 =item C<OK> (number)
 
