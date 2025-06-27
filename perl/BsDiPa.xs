@@ -29,9 +29,17 @@
 
 #define s_BSDIPA_IO_READ
 #define s_BSDIPA_IO_WRITE
+/**/
 #define s_BSDIPA_IO s_BSDIPA_IO_ZLIB
 /*#define s_BSDIPA_IO_ZLIB_LEVEL 9*/
 #include "c-lib/s-bsdipa-io.h"
+/**/
+#if s__BSDIPA_XZ
+# undef s_BSDIPA_IO
+# define s_BSDIPA_IO s_BSDIPA_IO_XZ
+# include "c-lib/s-bsdipa-io.h"
+#endif
+/**/
 #undef s_BSDIPA_IO
 #define s_BSDIPA_IO s_BSDIPA_IO_RAW
 #include "c-lib/s-bsdipa-io.h"
@@ -49,6 +57,7 @@
 
 /* For testing purposes allow changes via _try_oneshot_set() */
 static IV a_try_oneshot = -1;
+static IV const a_have_xz = s__BSDIPA_XZ;
 
 static void *a_alloc(size_t size);
 static void a_free(void *vp);
@@ -129,6 +138,10 @@ a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_windo
 	SvPVCLEAR(pref);
 	if(what == s_BSDIPA_IO_ZLIB)
 		s = s_bsdipa_io_write_zlib(&d, &a_core_diff__write, pref, a_try_oneshot);
+#if s__BSDIPA_XZ
+	else if(what == s_BSDIPA_IO_XZ)
+		s = s_bsdipa_io_write_xz(&d, &a_core_diff__write, pref, a_try_oneshot);
+#endif
 	else /*if(what == s_BSDIPA_IO_RAW)*/{
 		s_bsdipa_off_t x;
 
@@ -239,6 +252,10 @@ a_core_patch(int what, SV *after_sv, SV *patch_sv, SV *before_sv, SV *max_allowe
 
 	if(what == s_BSDIPA_IO_ZLIB)
 		s = s_bsdipa_io_read_zlib(&p);
+#if s__BSDIPA_XZ
+	else if(what == s_BSDIPA_IO_XZ)
+		s = s_bsdipa_io_read_xz(&p);
+#endif
 	else /*if(what == s_BSDIPA_IO_RAW)*/
 		s = s_bsdipa_io_read_raw(&p);
 	if(s != s_BSDIPA_OK)
@@ -304,6 +321,13 @@ OUTPUT:
 	RETVAL
 
 SV *
+HAVE_XZ()
+CODE:
+	RETVAL = newSViv(a_have_xz);
+OUTPUT:
+	RETVAL
+
+SV *
 OK()
 CODE:
 	RETVAL = newSViv(s_BSDIPA_OK);
@@ -355,6 +379,20 @@ CODE:
 OUTPUT:
 	RETVAL
 
+#if s__BSDIPA_XZ
+SV *
+core_diff_xz(before_sv, after_sv, patch_sv, magic_window=NULL, is_equal_data=NULL)
+	SV *before_sv
+	SV *after_sv
+	SV *patch_sv
+	SV *magic_window
+	SV *is_equal_data
+CODE:
+	RETVAL = a_core_diff(s_BSDIPA_IO_XZ, before_sv, after_sv, patch_sv, magic_window, is_equal_data);
+OUTPUT:
+	RETVAL
+#endif
+
 SV *
 core_patch_raw(after_sv, patch_sv, before_sv, max_allowed_restored_len=NULL)
 	SV *after_sv
@@ -376,3 +414,16 @@ CODE:
 	RETVAL = a_core_patch(s_BSDIPA_IO_ZLIB, after_sv, patch_sv, before_sv, max_allowed_restored_len);
 OUTPUT:
 	RETVAL
+
+#if s__BSDIPA_XZ
+SV *
+core_patch_xz(after_sv, patch_sv, before_sv, max_allowed_restored_len=NULL)
+	SV *after_sv
+	SV *patch_sv
+	SV *before_sv
+	SV *max_allowed_restored_len
+CODE:
+	RETVAL = a_core_patch(s_BSDIPA_IO_XZ, after_sv, patch_sv, before_sv, max_allowed_restored_len);
+OUTPUT:
+	RETVAL
+#endif

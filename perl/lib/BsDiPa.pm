@@ -28,21 +28,28 @@ S-bsdipa -- create or apply binary difference patch
 
 	my ($b, $a) = ("\012\013\00\01\02\03\04\05\06\07" x 3,
 			"\010\011\012\013\014" x 4);
-	my $pz, $iseq;
+
+	my $pz, $px, $pr, $iseq;
 	die if BsDiPa::core_diff_zlib($b, $a, \$pz, undef, \$iseq) ne BsDiPa::OK;
 	die unless(!$iseq);
-	my $pr;
+	if(BsDiPa::HAVE_XZ){
+		die if BsDiPa::core_diff_xz($b, $a, \$px, undef, \$iseq) ne BsDiPa::OK;
+		die unless(!$iseq)
+	}
 	die if BsDiPa::core_diff_raw($b, $a, \$pr) ne BsDiPa::OK;
 
 		my $x = uncompress($pz);
 		die unless(($pr cmp $x) == 0);
 
-	my $rz;
+	my $rz, $rx, $rr;
 	die if BsDiPa::core_patch_zlib($a, $pz, \$rz) ne BsDiPa::OK;
-	my $rr;
+	if(BsDiPa::HAVE_XZ){
+		die if BsDiPa::core_patch_xz($a, $px, \$rx) ne BsDiPa::OK
+	}
 	die if BsDiPa::core_patch_raw($a, $pr, \$rr) ne BsDiPa::OK;
-
+	die unless(($rr cmp $b) == 0);
 	die unless(($rz cmp $rr) == 0);
+	die unless(!BsDiPa::HAVE_XZ || ($rx cmp $rr) == 0);
 
 =head1 DESCRIPTION
 
@@ -67,6 +74,10 @@ Could be multiline, but has no trailing newline.
 =item C<COPYRIGHT> (string)
 
 A multiline string containing a copyright license summary.
+
+=item C<HAVE_XZ> (number / boolean)
+
+Returns 1 if support for liblzma (XZ) is available, 0 otherwise.
 
 =item C<OK> (number)
 
@@ -98,6 +109,11 @@ The optional reference C<$is_equal_data> will be set to 1
 if C<$before_sv> and C<$after_sv> represent identical data,
 to 0 otherwise; it is only defined on success.
 
+=item C<core_diff_xz($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0)>
+
+Exactly like C<core_diff_zlib()>, but with XZ (lzma) compression scheme.
+Only available if C<HAVE_XZ> is true.
+
 =item C<core_diff_raw($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0)>
 
 Exactly like C<core_diff_zlib()>, but without compression.
@@ -114,9 +130,14 @@ data in bytes,
 if 0 the effective limit is 31-bit.
 On error C<undef> is stored if at least C<$before_sv> is accessible.
 
+=item C<core_patch_xz($after_sv, $patch_sv, $before_sv, $max_allowed_restored_len=0)>
+
+Exactly like C<core_patch_zlib()>, but expects a XZ (lzma) compressed patch.
+Only available if C<HAVE_XZ> is true.
+
 =item C<core_patch_raw($after_sv, $patch_sv, $before_sv, $max_allowed_restored_len=0)>
 
-Exactly like C<core_patch_zlib()>, but expects raw uncompressed patch.
+Exactly like C<core_patch_zlib()>, but expects an uncompressed raw patch.
 
 =back
 
