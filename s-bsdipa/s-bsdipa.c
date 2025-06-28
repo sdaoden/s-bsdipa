@@ -43,13 +43,23 @@
 #endif
 
 #include "s-bsdipa-lib.h"
-#define s_BSDIPA_IO s_BSDIPA_IO_ZLIB
-/*#define s_BSDIPA_IO_ZLIB_LEVEL 9*/
 #define s_BSDIPA_IO_READ
 #define s_BSDIPA_IO_WRITE
+
+#define s_BSDIPA_IO s_BSDIPA_IO_RAW
 #include "s-bsdipa-io.h"
-#define a_IO_READ s_bsdipa_io_read_zlib
-#define a_IO_WRITE s_bsdipa_io_write_zlib
+
+#undef s_BSDIPA_IO
+#define s_BSDIPA_IO s_BSDIPA_IO_ZLIB
+#include "s-bsdipa-io.h"
+
+#ifdef s__BSDIPA_XZ
+# undef s_BSDIPA_IO
+# define s_BSDIPA_IO s_BSDIPA_IO_XZ
+/*# define s_BSDIPA_IO_XZ_PRESET 9*/
+/*# define s_BSDIPA_IO_XZ_CHECK LZMA_CHECK_NONE*/
+# include "s-bsdipa-io.h"
+#endif
 
 #ifndef O_BINARY
 # define O_BINARY 0
@@ -61,12 +71,12 @@
 #define a_EX_IOERR 74
 #define a_EX_TEMPFAIL 75
 
+/* 32 or 64 */
+#define a_NAME "s-bsdipa"
 #ifdef s_BSDIPA_32
-# define a_NAME "s-bsdipa32"
-# define a_MAGIC "SBSDIPA/32/" s_BSDIPA_IO_NAME "/"
+# define a_NAME_BITS "32"
 #else
-# define a_NAME "s-bsdipa"
-# define a_MAGIC "SBSDIPA/64/" s_BSDIPA_IO_NAME "/"
+# define a_NAME_BITS "64"
 #endif
 
 /* */
@@ -102,13 +112,33 @@
 # endif
 #endif /* a_STATS */
 
+struct a_io{
+	s_bsdipa_io_write_fun io_w;
+	s_bsdipa_io_read_fun io_r;
+	char io_n[8];
+};
+
 #if a_STATS
 struct a_mem{
 	struct a_mem *m_last;
 	size_t m_size;
 	void *m_vp;
 };
+#endif
 
+static struct a_io const a_io_meths[] = {
+	[s_BSDIPA_IO_RAW] = {s_bsdipa_io_write_raw, s_bsdipa_io_read_raw, s_BSDIPA_IO_NAME_RAW},
+	[s_BSDIPA_IO_ZLIB] = {s_bsdipa_io_write_zlib, s_bsdipa_io_read_zlib, s_BSDIPA_IO_NAME_ZLIB},
+	[s_BSDIPA_IO_XZ] = {
+#ifdef s__BSDIPA_XZ
+			s_bsdipa_io_write_xz, s_bsdipa_io_read_xz,
+#else
+			NULL, NULL,
+#endif
+			s_BSDIPA_IO_NAME_XZ},
+};
+
+#if a_STATS
 /* a_mem_curr only !NDEBUG */
 struct a_mem *a_mem_list;
 static size_t a_mem_peek, a_mem_all, a_mem_allno, a_mem_curr;
@@ -244,13 +274,17 @@ int
 main(int argc, char *argv[]){
 	enum{
 		a_NONE,
-		a_UNLINK = 1u<<0,
-		a_CLOSE = 1u<<1,
-		a_FCLOSE = 1u<<2,
-		a_UNMAP_AFTER = 1u<<3,
-		a_UNMAP_2ND = 1u<<4,
-		a_FREE_2ND = 1u<<5,
-		a_FREE_CTX = 1u<<6
+		a_FORCE = 1u<<0,
+		a_NO_HEADER = 1u<<1,
+		a_IO_DEF = 1u<<2,
+
+		a_UNLINK = 1u<<8,
+		a_CLOSE = 1u<<9,
+		a_FCLOSE = 1u<<10,
+		a_UNMAP_AFTER = 1u<<11,
+		a_UNMAP_2ND = 1u<<12,
+		a_FREE_2ND = 1u<<13,
+		a_FREE_CTX = 1u<<14
 	};
 
 #if a_STATS
@@ -262,32 +296,59 @@ main(int argc, char *argv[]){
 		struct s_bsdipa_diff_ctx d;
 	} c;
 	enum s_bsdipa_state s;
-	char const *targetname, *inbef, *inaft, *inpat, *emsg;
 	FILE *pfp;
-	int f, rv, noheader, fd;
+	char const *targetname, *inbef, *inaft, *inpat, *emsg;
+	struct a_io const *iop;
+	int f, rv, fd;
 
-	emsg = inbef = targetname = NULL; /* UNINIT */
+	/* UNINIT */
+	emsg = inbef = targetname = NULL;
+	pfp = NULL;
+
 	f = a_NONE;
+	iop = NULL;
 
-	if(argc != 5)
+	while((rv = getopt(argc, argv, "fHhJRz")) != -1)
+		switch(rv){
+		case 'f': f |= a_FORCE; break;
+		case 'H': f |= a_NO_HEADER; break;
+		case 'h': rv = a_EX_OK; goto juse;
+		case 'J': iop = &a_io_meths[s_BSDIPA_IO_XZ]; break;
+		case 'R': iop = &a_io_meths[s_BSDIPA_IO_RAW]; break;
+		case 'z': iop = &a_io_meths[s_BSDIPA_IO_ZLIB]; break;
+		default: goto jeuse;
+		}
+	if((f & a_NO_HEADER) && iop == NULL)
+		goto jeuse;
+	if(iop != NULL){
+		if(iop->io_w == NULL)
+			goto jeuse;
+	}else{
+		iop = &a_io_meths[s_BSDIPA_IO_ZLIB];
+		f |= a_IO_DEF;
+	}
+
+	if(optind >= argc)
+		goto jeuse;
+	argv += optind;
+	argc -= optind;
+	if(argc != 4)
 		goto jeuse;
 
 	c.m.mc_alloc = &a_alloc;
 	c.m.mc_free = &a_free;
 	rv = a_EX_DATAERR;
 
-	targetname = argv[1];
-	noheader = (*targetname == '=') ? (++targetname, 1) : 0;
-	fd = (*targetname == '!') ? (++targetname, O_TRUNC) : O_EXCL;
+	targetname = argv[0];
 
 	if(!strcmp(targetname, "patch")){
 		targetname = "restored";
 		inbef = NULL;
-		inaft = argv[2];
-		inpat = argv[3];
+		inaft = argv[1];
+		inpat = argv[2];
 	}else{
-		inbef = argv[2];
-		inaft = argv[3];
+		inbef = argv[1];
+		inaft = argv[2];
 		inpat = NULL;
 
 		if(!strcmp(targetname, "diff"))
@@ -310,7 +371,7 @@ main(int argc, char *argv[]){
 		targetname = "patch";
 	}
 
-	fd = open(argv[4], O_WRONLY | O_BINARY | O_CREAT | fd, 0666);
+	fd = open(argv[3], (O_WRONLY | O_BINARY | O_CREAT | (f & a_FORCE ? O_TRUNC : O_EXCL)), 0666);
 	if(fd == -1){
 		emsg = "cannot create";
 		goto Jioerr;
@@ -343,7 +404,7 @@ main(int argc, char *argv[]){
 			goto jes;
 
 		emsg = "I/O error";
-		if(!noheader && fwrite(a_MAGIC, sizeof(a_MAGIC) -1, 1, pfp) != 1){
+		if(!(f & a_NO_HEADER) && fprintf(pfp, "BSDIPA%s/%s/", a_NAME_BITS, iop->io_n) <= 0){
 			errno = EIO;
 			goto Jioerr;
 		}else{
@@ -351,7 +412,7 @@ main(int argc, char *argv[]){
 
 			a_CLOCK(&ts2);
 
-			switch(a_IO_WRITE(&c.d, &a_hook_write, pfp, 0)){
+			switch(iop->io_w(&c.d, &a_hook_write, pfp, 0)){
 			default: e = 0; break;
 			case s_BSDIPA_FBIG: e = EFBIG; break;
 			case s_BSDIPA_NOMEM: e = ENOMEM; break;
@@ -366,6 +427,8 @@ main(int argc, char *argv[]){
 			}
 		}
 	}else{
+		size_t headlen;
+
 		c.p.pc_after_dat = c.d.dc_after_dat;
 		c.p.pc_after_len = c.d.dc_after_len;
 		c.p.pc_max_allowed_restored_len = 0;
@@ -374,24 +437,61 @@ main(int argc, char *argv[]){
 			goto jleave;
 		f |= a_UNMAP_2ND;
 
-		if(!noheader && (c.p.pc_patch_len < sizeof(a_MAGIC) -1 ||
-				memcmp(c.p.pc_patch_dat, a_MAGIC, sizeof(a_MAGIC) -1))){
-			fprintf(stderr, "ERROR: \"patch\": incorrect file magic\n");
-			goto jleave;
+		if(f & a_NO_HEADER)
+			headlen = 0; /* UNINIT */
+		else{
+			size_t i, j;
+
+			headlen = sizeof("BSDIPA" a_NAME_BITS "/") -1;
+			if(c.p.pc_patch_len <= headlen || memcmp(c.p.pc_patch_dat, "BSDIPA", sizeof("BSDIPA") -1)){
+jephead:
+				fprintf(stderr, "ERROR: \"patch\": incorrect file identity header\n");
+				goto jleave;
+			}
+			if(c.p.pc_patch_dat[sizeof("BSDIPA") -1] != a_NAME_BITS[0] ||
+					c.p.pc_patch_dat[sizeof("BSDIPA3") -1] != a_NAME_BITS[1]){
+				fprintf(stderr,
+					"ERROR: \"patch\": incorrect file identity header: 32/64 bit mismatch?\n");
+				goto jleave;
+			}
+			if(c.p.pc_patch_dat[sizeof("BSDIPA32") -1] != '/')
+				goto jephead;
+
+			if(f & a_IO_DEF)
+				i = 0;
+			else{
+				i = s_BSDIPA_IO_MAX;
+				goto jpsrch;
+			}
+			for(;; ++i){
+				if(i >= sizeof(a_io_meths)/sizeof(a_io_meths[0]))
+					goto jephead;
+				iop = &a_io_meths[i];
+jpsrch:
+				j = strlen(iop->io_n);
+
+				if(c.p.pc_patch_len <= headlen + j + 1)
+					continue;
+				if(memcmp(&c.p.pc_patch_dat[headlen], iop->io_n, j) ||
+						c.p.pc_patch_dat[headlen + j] != '/')
+					continue;
+				headlen += ++j;
+				break;
+			}
 		}
 
 		/* Decompress patch */
 		/* C99 */{
 			int e;
 
-			if(!noheader){
-				c.p.pc_patch_dat += sizeof(a_MAGIC) -1;
-				c.p.pc_patch_len -= sizeof(a_MAGIC) -1;
+			if(!(f & a_NO_HEADER)){
+				c.p.pc_patch_dat += headlen;
+				c.p.pc_patch_len -= headlen;
 			}
 
 			a_CLOCK(&ts2);
 
-			switch(a_IO_READ(&c.p)){
+			switch(iop->io_r(&c.p)){
 			default: e = 0; break;
 			case s_BSDIPA_FBIG: e = EFBIG; break;
 			case s_BSDIPA_NOMEM: e = ENOMEM; break;
@@ -400,9 +500,9 @@ main(int argc, char *argv[]){
 
 			a_CLOCK(&te2);
 
-			if(!noheader){
-				c.p.pc_patch_dat -= sizeof(a_MAGIC) -1;
-				c.p.pc_patch_len += sizeof(a_MAGIC) -1;
+			if(!(f & a_NO_HEADER)){
+				c.p.pc_patch_dat -= headlen;
+				c.p.pc_patch_len += headlen;
 			}
 			munmap((void*)c.p.pc_patch_dat, (size_t)c.p.pc_patch_len + 1);
 			f ^= a_UNMAP_2ND;
@@ -516,7 +616,7 @@ jleave:
 	}
 #endif /* !NDEBUG */
 
-	if((f & a_UNLINK) && unlink(argv[4]) == -1){
+	if((f & a_UNLINK) && unlink(argv[3]) == -1){
 		assert(rv != a_EX_OK);
 		fprintf(stderr, "ERROR: removing \"%s\" failed: %s\n", targetname, strerror(errno));
 	}
@@ -531,7 +631,7 @@ jleave:
 # ifndef NDEBUG
 				" curr=%zu"
 # endif
-			"\n# Algorithm %ld:%03ld secs, I/O %ld:%03ld secs\n",
+			"\n# Code %ld:%03ld secs, %s I/O %ld:%03ld secs\n",
 			(long)a_reslen,
 			(inbef != NULL && c.d.dc_is_equal_data ? " | equal inputs" : ""),
 			a_mem_allno, a_mem_all, a_mem_peek,
@@ -539,7 +639,7 @@ jleave:
 			a_mem_curr,
 # endif
 			(long)a_CLOCK_SEC(&te), (long)a_CLOCK_SSEC_2_1000th(&te),
-			(long)a_CLOCK_SEC(&te2), (long)a_CLOCK_SSEC_2_1000th(&te2));
+			iop->io_n, (long)a_CLOCK_SEC(&te2), (long)a_CLOCK_SSEC_2_1000th(&te2));
 
 # ifndef NDEBUG
 		if(inbef != NULL){
@@ -556,40 +656,45 @@ jleave:
 
 	return rv;
 jeuse:
+	rv = a_EX_USAGE;
+juse:
 	fprintf(stderr,
-		a_NAME " (" s_BSDIPA_IO_NAME "; " s_BSDIPA_VERSION
-			"): create or apply binary difference patch\n"
+		a_NAME " (" s_BSDIPA_VERSION "): create or apply binary difference patch\n"
 		"\n"
-		"  " a_NAME " [!]patch    after  patch restored\n"
-		"  " a_NAME " [!]diff     before after patch\n"
-		"  " a_NAME " [!]diff/VAL before after patch\n"
+		"  " a_NAME a_NAME_BITS " [-fHJRz] patch    after  patch restored\n"
+		"  " a_NAME a_NAME_BITS " [-fHJRz] diff     before after patch\n"
+		"  " a_NAME a_NAME_BITS " [-fHJRz] diff/VAL before after patch\n"
 		"\n"
 		"The first uses \"patch\" to create \"restored\" from \"after\".\n"
 		"The latter create \"patch\" from the difference of \"after\" and \"before\";\n"
 		"they differ in the size of the \"magic window\": diff uses the built-in value,\n"
 		"diff/VAL uses VAL, a positive integer <= 4096.\n"
-		"An existing target is overwritten if the subcommand is prefixed with \"!\".\n"
-		"(If above subcommands are prefixed by \"=\" the otherwise expected / produced\n"
-		"filetype identification header is omitted, and only raw data is processed.)\n"
-#if a_STATS
-		"Certain statistics are written on standard error.\n"
-#endif
 		"\n"
-#if s_BSDIPA_IO != s_BSDIPA_IO_RAW
-		". Patches use " s_BSDIPA_IO_NAME " compression.\n"
+		"-f  overwrite an existing target file\n"
+		"-H  do not read/write file identity header; one of -[JRz] must be set\n"
+		"    (\"BSDIPA\" + \"32\" or \"64\" + \"/\" plus I/O type + \"/\")\n"
+		"-J  use LZMA2 compression (XZ utils, liblzma; optional: "
+#ifndef s__BSDIPA_XZ
+			"NOT "
+#endif
+			"available)\n"
+		"-R  raw, uncompressed output (no checksum; for testing)\n"
+		"-z  ZLIB compression (default)\n"
+		"\n"
+#if a_STATS
+		". Certain statistics are written on standard error.\n"
 #endif
 #ifdef s_BSDIPA_32
 		". Reduced overhead: 32-bit file sizes and patch control data.\n"
 #endif
 #ifndef NDEBUG
-		". Debug-enabled code: deallocations etc"
+		". Debug-enabled code: memory cleanup etc"
 # if a_STATS
 			", more statistics"
 # endif
 			".\n"
 #endif
 		". Bugs/Contact via " s_BSDIPA_CONTACT ".\n");
-	rv = a_EX_USAGE;
 	goto jleave;
 
 jes:

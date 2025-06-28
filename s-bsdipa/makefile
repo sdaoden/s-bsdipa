@@ -27,8 +27,10 @@ SUFS = -fno-common \
 
 SUFX = $(SUFW) $(SUFS)
 
-CFLAGS += -std=c99 $(s_BSDIPA_CFLAGS) -I../lib
-LIBS = ../lib/libsbsdipa.a -lz
+CFLAGS += -std=c99 $(s_BSDIPA_CFLAGS) -I../lib \
+	$$(xz --version >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_XZ)
+LIBS = ../lib/libsbsdipa.a -lz \
+	$$(xz --version >/dev/null 2>&1 && printf '%s' -llzma)
 
 SRC = $(PROG).c
 

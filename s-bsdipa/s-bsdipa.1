@@ -1,20 +1,95 @@
 .\"@ s-bsdipa - create or apply binary difference patch.
 .
-.Dd Dec 20, 2024
-.Dt S-BSDIPA 1
+.Dd June 29, 2025
+.ds VV \\%v0.8.0
+.ds XX \\%S-BSDIPA
+.ds Xx \\%S-bsdipa
+.ds xX \\%s-bsdipa
+.
+.Dt "\*(XX" 1
 .Os
 .
+.
 .Sh NAME
-.Nm s-bsdipa
+.Nm \*(Xx \%[\*(VV]
 .Nd create or apply binary difference patch
+.
 .
 .Sh SYNOPSIS
 .
-.Nm
+.Nm \*(xX\&32
+.Bk
+\(em 32-bit limits
+.Ek
+.Nm \*(xX\&64
+.Bk
+\(em 64-bit limits
+.Ek
+.
+.Pp
+.Nm \*(xX
+.Fl h
+.
+.Pp
+.Nm \*(xX
+.Op Fl fHJR
+.Ar patch
+.Ar after
+.Ar before
+.Ar restored
+.
+.Pp
+.Nm \*(xX
+.Op Fl fHJR
+.Ar diff
+.Ar before
+.Ar after
+.Ar patch
+.
+.Nm \*(xX
+.Op Fl fHJR
+.Ar diff/VAL
+.Ar before
+.Ar after
+.Ar patch
+.
 .
 .Sh DESCRIPTION
 .
-Please invoke the command without arguments to see usage notes.
+.Pp
+\*(Xx creates or applies binary difference patches
+by using Colin Percival's BSDiff algorithm.
+Two distinct, non-interchangeable variants exist:
+.Nm \*(xX\&32
+has 32-bit file size limits,
+.Nm \*(xX\&64
+64-bit;
+memory footprint and control data size of the former is roughly half
+that of the latter.
+(Operational limit may be furtherly constrained by the address size
+limit of the host.)
+.
+.Ss "Options"
+.
+.Bl -tag -compact -width ".It Fl BaNg"
+.It Fl f
+Overwrite an existing target file.
+.It Fl H
+Do not read or write file identity header;
+one of
+.Fl J | R | z
+must be used in addition.
+.It Fl h
+Show usage information and exit.
+.It Fl J
+Use LZMA2 compression.
+This is an optional feature.
+.It Fl R
+Uncompressed patch format without checksum (for testing).
+.It Fl z
+Use ZLIB compression (default).
+.El
+.
 .
 .Sh AUTHORS
 .
