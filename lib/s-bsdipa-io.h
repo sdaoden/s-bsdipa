@@ -5,10 +5,10 @@
  *@ - and include this header.
  *@ It then provides the according s_BSDIPA_IO_NAME preprocessor literal
  *@ and s_bsdipa_io_{read,write}_..(), which (are) fe(e)d data to/from hooks.
- *@ The functions have s_BSDIPA_IO_LINKAGE storage, or static if not defined.
- *@ There may be additional static helper functions.
  *@
  *@ Notes:
+ *@ - the functions have s_BSDIPA_IO_LINKAGE storage, or static if not defined.
+ *@   There may be additional static helper functions.
  *@ - it is up to the user to provide according linker flags, like -lz!
  *@ - this is not a step-by-step filter: a complete s_bsdipa_diff() result
  *@   is serialized, or serialized data is turned into a complete data set
@@ -73,10 +73,14 @@ extern "C" {
 #  error At least one of s_BSDIPA_IO_READ and s_BSDIPA_IO_WRITE is needed
 # endif
 
-/* Compression types (preprocessor so sources can adapt) */
+/* Compression types and names (preprocessor so sources can adapt) */
 # define s_BSDIPA_IO_RAW 0
+#  define s_BSDIPA_IO_NAME_RAW "RAW"
 # define s_BSDIPA_IO_ZLIB 1
+#  define s_BSDIPA_IO_NAME_ZLIB "ZLIB"
 # define s_BSDIPA_IO_XZ 2
+#  define s_BSDIPA_IO_NAME_XZ "XZ"
+# define s_BSDIPA_IO_MAX 2
 
 # ifndef s_BSDIPA_IO_LINKAGE
 #  define s_BSDIPA_IO_LINKAGE static
@@ -94,8 +98,8 @@ extern "C" {
  * Note that *only* in this case the buffer size is at least one greater than len! */
 typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *cookie, uint8_t const *dat, s_bsdipa_off_t len,
 		s_bsdipa_off_t is_last);
-/*s_BSDIPA_IO_LINKAGE enum s_bsdipa_state s_bsdipa_io_write_*(struct s_bsdipa_diff_ctx const *dcp,
-		s_bsdipa_io_write_ptf hook, void *cookie, int try_oneshot);*/
+typedef enum s_bsdipa_state (*s_bsdipa_io_write_fun)(struct s_bsdipa_diff_ctx const *dcp,
+		s_bsdipa_io_write_ptf hook, void *cookie, int try_oneshot);
 # endif
 
 # ifdef s_BSDIPA_IO_READ
@@ -107,7 +111,7 @@ typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *cookie, uint8_t const
  * On success .pc_header is filled in; it is up to the user to update .pc_patch* with the .pc_restored* fields
  * and call s_bsdipa_patch() to apply the real patch.
  * (.pc_restored_dat will be overwritten by s_bsdipa_patch().) */
-/*s_BSDIPA_IO_LINKAGE enum s_bsdipa_state s_bsdipa_io_read_*(struct s_bsdipa_patch_ctx *pcp);*/
+typedef enum s_bsdipa_state (*s_bsdipa_io_read_fun)(struct s_bsdipa_patch_ctx *pcp);
 # endif
 #endif /* s_BSDIPA_IO_H==0 */
 
@@ -119,7 +123,7 @@ typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *cookie, uint8_t const
 # endif
 # define s__BSDIPA_IO_RAW
 # define s_BSDIPA_IO s_BSDIPA_IO_RAW
-# define s_BSDIPA_IO_NAME "RAW"
+# define s_BSDIPA_IO_NAME s_BSDIPA_IO_NAME_RAW
 
 # include <assert.h>
 
@@ -223,7 +227,7 @@ jleave:
 #  error s_BSDIPA_IO==s_BSDIPA_IO_ZLIB already defined
 # endif
 # define s__BSDIPA_IO_ZLIB
-# define s_BSDIPA_IO_NAME "ZLIB"
+# define s_BSDIPA_IO_NAME s_BSDIPA_IO_NAME_ZLIB
 
 # include <assert.h>
 
@@ -552,7 +556,7 @@ s__bsdipa_io_zlib_free(voidpf my_cookie, voidpf dat){
 #  error s_BSDIPA_IO==s_BSDIPA_IO_XZ already defined
 # endif
 # define s__BSDIPA_IO_XZ
-# define s_BSDIPA_IO_NAME "XZ"
+# define s_BSDIPA_IO_NAME s_BSDIPA_IO_NAME_XZ
 
 # include <assert.h>
 
