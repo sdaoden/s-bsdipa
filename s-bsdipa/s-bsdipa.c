@@ -413,7 +413,7 @@ main(int argc, char *argv[]){
 
 			a_CLOCK(&ts2);
 
-			switch(iop->io_w(&c.d, &a_hook_write, pfp, 0)){
+			switch(iop->io_w(&c.d, &a_hook_write, pfp, 0, NULL)){
 			default: e = 0; break;
 			case s_BSDIPA_FBIG: e = EFBIG; break;
 			case s_BSDIPA_NOMEM: e = ENOMEM; break;
@@ -497,7 +497,7 @@ jpsrch:
 
 			a_CLOCK(&ts2);
 
-			switch(iop->io_r(&c.p)){
+			switch(iop->io_r(&c.p, NULL)){
 			default: e = 0; break;
 			case s_BSDIPA_FBIG: e = EFBIG; break;
 			case s_BSDIPA_NOMEM: e = ENOMEM; break;

@@ -136,10 +136,10 @@ a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_windo
 
 	SvPVCLEAR(pref);
 	if(what == s_BSDIPA_IO_ZLIB)
-		s = s_bsdipa_io_write_zlib(&d, &a_core_diff__write, pref, a_try_oneshot);
+		s = s_bsdipa_io_write_zlib(&d, &a_core_diff__write, pref, a_try_oneshot, NULL);
 #if s__BSDIPA_XZ
 	else if(what == s_BSDIPA_IO_XZ)
-		s = s_bsdipa_io_write_xz(&d, &a_core_diff__write, pref, a_try_oneshot);
+		s = s_bsdipa_io_write_xz(&d, &a_core_diff__write, pref, a_try_oneshot, NULL);
 #endif
 	else /*if(what == s_BSDIPA_IO_RAW)*/{
 		s_bsdipa_off_t x;
@@ -147,7 +147,7 @@ a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_windo
 		x = sizeof(d.dc_header) + d.dc_ctrl_len + d.dc_diff_len + d.dc_extra_len +1;
 		SvGROW(pref, x);
 		SvCUR_set(pref, 0);
-		s = s_bsdipa_io_write_raw(&d, &a_core_diff__write, pref, a_try_oneshot);
+		s = s_bsdipa_io_write_raw(&d, &a_core_diff__write, pref, a_try_oneshot, NULL);
 	}
 
 jdone:
@@ -250,13 +250,13 @@ a_core_patch(int what, SV *after_sv, SV *patch_sv, SV *before_sv, SV *max_allowe
 	p.pc_patch_dat = SvPVbyte_nolen(patch_sv);
 
 	if(what == s_BSDIPA_IO_ZLIB)
-		s = s_bsdipa_io_read_zlib(&p);
+		s = s_bsdipa_io_read_zlib(&p, NULL);
 #if s__BSDIPA_XZ
 	else if(what == s_BSDIPA_IO_XZ)
-		s = s_bsdipa_io_read_xz(&p);
+		s = s_bsdipa_io_read_xz(&p, NULL);
 #endif
 	else /*if(what == s_BSDIPA_IO_RAW)*/
-		s = s_bsdipa_io_read_raw(&p);
+		s = s_bsdipa_io_read_raw(&p, NULL);
 	if(s != s_BSDIPA_OK)
 		goto jleave;
 
