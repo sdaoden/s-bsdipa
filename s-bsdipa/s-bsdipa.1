@@ -48,7 +48,7 @@
 .
 .Nm \*(xX
 .Op Fl fHJR
-.Ar diff/VAL
+.Ar diff/WINDOW
 .Ar before
 .Ar after
 .Ar patch
@@ -68,6 +68,19 @@ memory footprint and control data size of the former is roughly half
 that of the latter.
 (Operational limit may be furtherly constrained by the address size
 limit of the host.)
+.
+.Pp
+When applying a
+.Ar patch
+the compression method is automatically detected,
+an explicitly given one must match.
+When creating a difference patch the
+.Ar diff/WINDOW
+variant allows to specify the
+.Dq data inspection window size ,
+which defaults to 16, and has impacts on processing speed and patch size;
+its applicability depends on the data, but values outside the range 4 to
+64 hardly seem useful.
 .
 .Ss "Options"
 .
