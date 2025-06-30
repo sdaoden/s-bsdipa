@@ -668,12 +668,12 @@ juse:
 		"\n"
 		"  " a_NAME a_NAME_BITS " [-fHJRz] patch    after  patch restored\n"
 		"  " a_NAME a_NAME_BITS " [-fHJRz] diff     before after patch\n"
-		"  " a_NAME a_NAME_BITS " [-fHJRz] diff/VAL before after patch\n"
+		"  " a_NAME a_NAME_BITS " [-fHJRz] diff/WIN before after patch\n"
 		"\n"
 		"The first uses \"patch\" to create \"restored\" from \"after\".\n"
 		"The latter create \"patch\" from the difference of \"after\" and \"before\";\n"
 		"they differ in the size of the \"magic window\": diff uses the built-in value,\n"
-		"diff/VAL uses VAL, a positive integer <= 4096.\n"
+		"diff/WIN uses WINdow, a positive number <= 4096.\n"
 		"\n"
 		"-f  overwrite an existing target file\n"
 		"-H  do not read/write file identity header; one of -[JRz] must be set\n"
@@ -686,11 +686,11 @@ juse:
 		"-R  raw, uncompressed output (no checksum; for testing)\n"
 		"-z  ZLIB compression (default)\n"
 		"\n"
-#if a_STATS
-		". Certain statistics are written on standard error.\n"
-#endif
 #ifdef s_BSDIPA_32
 		". Reduced overhead: 32-bit file sizes and patch control data.\n"
+#endif
+#if a_STATS
+		". Certain statistics are written on standard error.\n"
 #endif
 #ifndef NDEBUG
 		". Debug-enabled code: memory cleanup etc"
