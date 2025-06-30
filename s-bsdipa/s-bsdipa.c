@@ -276,7 +276,8 @@ main(int argc, char *argv[]){
 		a_NONE,
 		a_FORCE = 1u<<0,
 		a_NO_HEADER = 1u<<1,
-		a_IO_DEF = 1u<<2,
+		a_NO_ACT = 1u<<2,
+		a_IO_DEF = 1u<<3,
 
 		a_UNLINK = 1u<<8,
 		a_CLOSE = 1u<<9,
@@ -312,7 +313,7 @@ main(int argc, char *argv[]){
 		switch(rv){
 		case 'f': f |= a_FORCE; break;
 		case 'H': f |= a_NO_HEADER; break;
-		case 'h': rv = a_EX_OK; goto juse;
+		case 'h': f |= a_NO_ACT; rv = a_EX_OK; goto juse;
 		case 'J': iop = &a_io_meths[s_BSDIPA_IO_XZ]; break;
 		case 'R': iop = &a_io_meths[s_BSDIPA_IO_RAW]; break;
 		case 'z': iop = &a_io_meths[s_BSDIPA_IO_ZLIB]; break;
@@ -627,7 +628,7 @@ jleave:
 	}
 
 #if a_STATS
-	if(rv == a_EX_OK){
+	if(!(f & a_NO_ACT) && rv == a_EX_OK){
 		a_CLOCK_SUB(&te, &ts);
 		a_CLOCK_SUB(&te2, &ts2);
 		fprintf(stderr,
@@ -663,14 +664,15 @@ jleave:
 jeuse:
 	rv = a_EX_USAGE;
 juse:
-	fprintf(stderr,
+	fprintf((rv == a_EX_OK ? stdout : stderr),
 		a_NAME " (" s_BSDIPA_VERSION "): create or apply binary difference patch\n"
 		"\n"
 		"  " a_NAME a_NAME_BITS " [-fHJRz] patch    after  patch restored\n"
 		"  " a_NAME a_NAME_BITS " [-fHJRz] diff     before after patch\n"
 		"  " a_NAME a_NAME_BITS " [-fHJRz] diff/WIN before after patch\n"
 		"\n"
-		"The first uses \"patch\" to create \"restored\" from \"after\".\n"
+		"The first uses \"patch\" to create \"restored\" from \"after\";\n"
+		"if a compression method is given, it must match the detected one.\n"
 		"The latter create \"patch\" from the difference of \"after\" and \"before\";\n"
 		"they differ in the size of the \"magic window\": diff uses the built-in value,\n"
 		"diff/WIN uses WINdow, a positive number <= 4096.\n"
