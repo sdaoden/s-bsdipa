@@ -1,6 +1,10 @@
 #@ Makefile for s-bsdipa.
 #@ Please see top of [../]lib/makefile for possible arguments to pass!
 
+AWK ?= awk
+MKDIR ?= mkdir
+RM ?= rm
+
 PROG = s-bsdipa
 
 SUFWW = #-Weverything
@@ -37,7 +41,9 @@ SRC = $(PROG).c
 $(PROG): $(SRC) ../lib/s-bsdipa-io.h
 	$(CC) $(CFLAGS) -o $(@) $(SRC) $(LIBS)
 all: $(PROG)
+test: all
+	DP32=$(s_BSDIPA_32) AWK="$(AWK)" MKDIR="$(MKDIR)" RM="$(RM)" exec ./s-bsdipa-test.sh
 clean:
-	rm -f $(PROG)
+	$(RM) -rf $(PROG) .test
 
 # s-mk-mode
