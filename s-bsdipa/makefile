@@ -1,9 +1,10 @@
 #@ Makefile for s-bsdipa.
 #@ Please see top of [../]lib/makefile for possible arguments to pass!
 
-AWK ?= awk
+DD ?= dd
 MKDIR ?= mkdir
 RM ?= rm
+SEQ ?= seq
 
 PROG = s-bsdipa
 
@@ -42,7 +43,10 @@ $(PROG): $(SRC) ../lib/s-bsdipa-io.h
 	$(CC) $(CFLAGS) -o $(@) $(SRC) $(LIBS)
 all: $(PROG)
 test: all
-	DP32=$(s_BSDIPA_32) AWK="$(AWK)" MKDIR="$(MKDIR)" RM="$(RM)" exec ./s-bsdipa-test.sh
+	DP32=$(s_BSDIPA_32) \
+	DPXZ=$$(xz --version >/dev/null 2>&1 && echo y) \
+	DD="$(DD)" MKDIR="$(MKDIR)" RM="$(RM)" SEQ="$(SEQ)" \
+	exec ./s-bsdipa-test.sh
 clean:
 	$(RM) -rf $(PROG) .test
 

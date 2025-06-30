@@ -61,6 +61,7 @@ $(CONFIGH):
 	./configh.sh "$$v1" "$$v2"
 $(LIB): $(CONFIGH) $(OBJS)
 	$(AR) crs $(@) $(OBJS)
+test:
 clean:
 	$(RM) -f $(LIB) $(OBJS) $(CONFIGH)
 
