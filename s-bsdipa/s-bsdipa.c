@@ -337,10 +337,10 @@ main(int argc, char *argv[]){
 
 	c.m.mc_alloc = &a_alloc;
 	c.m.mc_free = &a_free;
+
 	rv = a_EX_DATAERR;
 
 	targetname = argv[0];
-
 	if(!strcmp(targetname, "patch")){
 		targetname = "restored";
 		inbef = NULL;
@@ -445,7 +445,8 @@ main(int argc, char *argv[]){
 			headlen = sizeof("BSDIPA" a_NAME_BITS "/") -1;
 			if(c.p.pc_patch_len <= headlen || memcmp(c.p.pc_patch_dat, "BSDIPA", sizeof("BSDIPA") -1)){
 jephead:
-				fprintf(stderr, "ERROR: \"patch\": incorrect file identity header\n");
+				fprintf(stderr, "ERROR: \"patch\": incorrect file identity header%s\n",
+					(!(f & a_IO_DEF) ? " (for compression method)" : ""));
 				goto jleave;
 			}
 			if(c.p.pc_patch_dat[sizeof("BSDIPA") -1] != a_NAME_BITS[0] ||
@@ -477,6 +478,10 @@ jpsrch:
 					continue;
 				headlen += ++j;
 				break;
+			}
+			if(iop->io_w == NULL){
+				fprintf(stderr, "ERROR: compression method not available: %s\n", iop->io_n);
+				goto jleave;
 			}
 		}
 
