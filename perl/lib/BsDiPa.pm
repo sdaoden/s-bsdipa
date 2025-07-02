@@ -96,7 +96,7 @@ Allocation failure.
 
 Any other error, like invalid argument.
 
-=item C<core_diff_zlib($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0)>
+=item C<core_diff_zlib($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0, $io_cookie=0)>
 
 Create a compressed binary diff
 from the memory backing C<$before_sv>
@@ -109,19 +109,20 @@ the already unreasonable value 4096 is the maximum supported.
 The optional reference C<$is_equal_data> will be set to 1
 if C<$before_sv> and C<$after_sv> represent identical data,
 to 0 otherwise; it is only defined on success.
+See below for C<$io_cookie>.
 
-=item C<core_diff_xz($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0)>
+=item C<core_diff_xz($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0, $io_cookie=0)>
 
 Exactly like C<core_diff_zlib()>, but with XZ (lzma) compression scheme.
 Only available if C<HAVE_XZ> is true.
 
-=item C<core_diff_raw($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0)>
+=item C<core_diff_raw($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0, $io_cookie=0)>
 
 Exactly like C<core_diff_zlib()>, but without compression.
 As compression is absolutely necessary, only meant for testing,
 or as a foundation for other compression methods.
 
-=item C<core_patch_zlib($after_sv, $patch_sv, $before_sv, $max_allowed_restored_len=0)>
+=item C<core_patch_zlib($after_sv, $patch_sv, $before_sv, $max_allowed_restored_len=0, $io_cookie=0)>
 
 Apply a compressed binary diff C<$patch_sv>
 to the memory backing C<$after_sv>
@@ -130,15 +131,28 @@ C<$max_allowed_restored_len> specifies the maximum allowed size of the restored
 data in bytes,
 if 0 the effective limit is 31-bit.
 On error C<undef> is stored if at least C<$before_sv> is accessible.
+See below for C<$io_cookie>.
 
-=item C<core_patch_xz($after_sv, $patch_sv, $before_sv, $max_allowed_restored_len=0)>
+=item C<core_patch_xz($after_sv, $patch_sv, $before_sv, $max_allowed_restored_len=0, $io_cookie=0)>
 
 Exactly like C<core_patch_zlib()>, but expects a XZ (lzma) compressed patch.
 Only available if C<HAVE_XZ> is true.
 
-=item C<core_patch_raw($after_sv, $patch_sv, $before_sv, $max_allowed_restored_len=0)>
+=item C<core_patch_raw($after_sv, $patch_sv, $before_sv, $max_allowed_restored_len=0, $io_cookie=0)>
 
 Exactly like C<core_patch_zlib()>, but expects an uncompressed raw patch.
+
+=item C<core_io_cookie_gut($io_cookie)>
+
+Delete an I/O cookie that was created via one of the C<core_io_cookie_new*()> functions below.
+An I/O cookie can be used for diffing and patching in any order,
+and can (massively) reduce memory and other creation/release costs, where supported.
+
+=item C<core_io_cookie_new_xz($level=0)>
+
+Create an I/O cookie for the XZ compression scheme.
+C<$level> will be used for the compression level (no value check) if set.
+Only available if C<HAVE_XZ> is true.
 
 =back
 

@@ -30,6 +30,8 @@ use BsDiPa;
 #print BsDiPa::CONTACT, "\n";
 #print BsDiPa::COPYRIGHT;
 
+our ($cz,$cx,$cr) = (undef,undef,undef);
+
 sub doit{
 	my ($t, $b, $a, $eq) = @_;
 
@@ -44,11 +46,11 @@ sub doit{
 	ok(!defined $pz);
 	ok(BsDiPa::core_diff_zlib($b, $a, undef) eq BsDiPa::INVAL);
 	ok(BsDiPa::core_diff_zlib($b, $a, $pz) eq BsDiPa::INVAL);
-	ok(BsDiPa::core_diff_zlib($b, $a, \$pz) eq BsDiPa::OK);
+	ok(BsDiPa::core_diff_zlib($b, $a, \$pz, undef, undef, $cz) eq BsDiPa::OK);
 	ok(defined $pz);
-	ok(BsDiPa::core_diff_zlib($b, $a, \$pz, undef, $iseq) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_diff_zlib($b, $a, \$pz, undef, $iseq, $cz) eq BsDiPa::INVAL);
 	ok(!defined $pz);
-	ok(BsDiPa::core_diff_zlib($b, $a, \$pz, undef, \$iseq) eq BsDiPa::OK);
+	ok(BsDiPa::core_diff_zlib($b, $a, \$pz, undef, \$iseq, $cz) eq BsDiPa::OK);
 	ok(defined $pz);
 	ok($eq == $iseq);
 
@@ -59,11 +61,11 @@ sub doit{
 		ok(!defined $px);
 		ok(BsDiPa::core_diff_xz($b, $a, undef) eq BsDiPa::INVAL);
 		ok(BsDiPa::core_diff_xz($b, $a, $px) eq BsDiPa::INVAL);
-		ok(BsDiPa::core_diff_xz($b, $a, \$px) eq BsDiPa::OK);
+		ok(BsDiPa::core_diff_xz($b, $a, \$px, undef, undef, $cx) eq BsDiPa::OK);
 		ok(defined $px);
-		ok(BsDiPa::core_diff_xz($b, $a, \$px, undef, $iseq) eq BsDiPa::INVAL);
+		ok(BsDiPa::core_diff_xz($b, $a, \$px, undef, $iseq, $cx) eq BsDiPa::INVAL);
 		ok(!defined $px);
-		ok(BsDiPa::core_diff_xz($b, $a, \$px, undef, \$iseq) eq BsDiPa::OK);
+		ok(BsDiPa::core_diff_xz($b, $a, \$px, undef, \$iseq, $cx) eq BsDiPa::OK);
 		ok(defined $px);
 		ok($eq == $iseq);
 	}
@@ -74,24 +76,25 @@ sub doit{
 	ok(!defined $pr);
 	ok(BsDiPa::core_diff_raw($b, $a, undef) eq BsDiPa::INVAL);
 	ok(BsDiPa::core_diff_raw($b, $a, $pr) eq BsDiPa::INVAL);
-	ok(BsDiPa::core_diff_raw($b, $a, \$pr) eq BsDiPa::OK);
+	ok(BsDiPa::core_diff_raw($b, $a, \$pr, undef, undef, $cr) eq BsDiPa::OK);
 	ok(defined $pr);
-	ok(BsDiPa::core_diff_raw($b, $a, \$pr, undef, $iseq) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_diff_raw($b, $a, \$pr, undef, $iseq, $cr) eq BsDiPa::INVAL);
 	ok(!defined $pr);
-	ok(BsDiPa::core_diff_raw($b, $a, \$pr, undef, \$iseq) eq BsDiPa::OK);
+	ok(BsDiPa::core_diff_raw($b, $a, \$pr, undef, \$iseq, $cr) eq BsDiPa::OK);
 	ok(defined $pr);
 	ok($eq == $iseq);
 
 	my $x = uncompress($pz);
 	ok(($pr cmp $x) == 0);
+	undef $x;
 
 	ok(BsDiPa::core_patch_zlib(undef, $pz, \$rz) eq BsDiPa::INVAL);
 	ok(!defined $rz);
 	ok(BsDiPa::core_patch_zlib($a, undef, \$rz) eq BsDiPa::INVAL);
 	ok(!defined $rz);
 	ok(BsDiPa::core_patch_zlib($a, $pz, undef) eq BsDiPa::INVAL);
-	ok(BsDiPa::core_patch_zlib($a, $pz, $rz) eq BsDiPa::INVAL);
-	ok(BsDiPa::core_patch_zlib($a, $pz, \$rz) eq BsDiPa::OK);
+	ok(BsDiPa::core_patch_zlib($a, $pz, $rz, undef, $cz) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_patch_zlib($a, $pz, \$rz, undef, $cz) eq BsDiPa::OK);
 	ok(defined $rz);
 	ok(($rz cmp $b) == 0);
 
@@ -101,8 +104,8 @@ sub doit{
 		ok(BsDiPa::core_patch_xz($a, undef, \$rx) eq BsDiPa::INVAL);
 		ok(!defined $rx);
 		ok(BsDiPa::core_patch_xz($a, $px, undef) eq BsDiPa::INVAL);
-		ok(BsDiPa::core_patch_xz($a, $px, $rx) eq BsDiPa::INVAL);
-		ok(BsDiPa::core_patch_xz($a, $px, \$rx) eq BsDiPa::OK);
+		ok(BsDiPa::core_patch_xz($a, $px, $rx, undef, $cx) eq BsDiPa::INVAL);
+		ok(BsDiPa::core_patch_xz($a, $px, \$rx, undef, $cx) eq BsDiPa::OK);
 		ok(defined $rx);
 		ok(($rx cmp $b) == 0);
 
@@ -114,15 +117,15 @@ sub doit{
 	ok(BsDiPa::core_patch_raw($a, undef, \$rr) eq BsDiPa::INVAL);
 	ok(!defined $rr);
 	ok(BsDiPa::core_patch_raw($a, $pr, undef) eq BsDiPa::INVAL);
-	ok(BsDiPa::core_patch_raw($a, $pr, $rr) eq BsDiPa::INVAL);
-	ok(BsDiPa::core_patch_raw($a, $pr, \$rr) eq BsDiPa::OK);
+	ok(BsDiPa::core_patch_raw($a, $pr, $rr, undef, $cr) eq BsDiPa::INVAL);
+	ok(BsDiPa::core_patch_raw($a, $pr, \$rr, undef, $cr) eq BsDiPa::OK);
 	ok(defined $rr);
 	ok(($rr cmp $b) == 0);
 
 	ok(($rr cmp $rz) == 0);
 
 	#
-	ok(BsDiPa::core_patch_zlib($a, $pz, \$rz, length($rz)) eq BsDiPa::OK);
+	ok(BsDiPa::core_patch_zlib($a, $pz, \$rz, length($rz), $cz) eq BsDiPa::OK);
 	ok(defined $rz);
 	ok(($rz cmp $b) == 0);
 	ok(BsDiPa::core_patch_zlib($a, $pz, \$rz, length($rz) - 1) eq BsDiPa::FBIG);
@@ -133,7 +136,7 @@ sub doit{
 	ok(!defined $rz);
 
 	if(BsDiPa::HAVE_XZ){
-		ok(BsDiPa::core_patch_xz($a, $px, \$rx, length($rx)) eq BsDiPa::OK);
+		ok(BsDiPa::core_patch_xz($a, $px, \$rx, length($rx), $cx) eq BsDiPa::OK);
 		ok(defined $rx);
 		ok(($rx cmp $b) == 0);
 		ok(BsDiPa::core_patch_xz($a, $px, \$rx, length($rx) - 1) eq BsDiPa::FBIG);
@@ -144,7 +147,7 @@ sub doit{
 		ok(!defined $rx);
 	}
 
-	ok(BsDiPa::core_patch_raw($a, $pr, \$rr, length($rr)) eq BsDiPa::OK);
+	ok(BsDiPa::core_patch_raw($a, $pr, \$rr, length($rr), $cr) eq BsDiPa::OK);
 	ok(defined $rr);
 	ok(($rr cmp $b) == 0);
 	ok(BsDiPa::core_patch_raw($a, $pr, \$rr, length($rr) - 1) eq BsDiPa::FBIG);
@@ -212,12 +215,14 @@ sub ckit{
 }
 
 ckit();
+$cx = BsDiPa::core_io_cookie_new_xz() if BsDiPa::HAVE_XZ;
 BsDiPa::_try_oneshot_set(0);
 ckit();
 BsDiPa::_try_oneshot_set(1);
 ckit();
 BsDiPa::_try_oneshot_set(-1);
-for(my $i=0; $i < 5; ++$i) {ckit()}
+for(my $i = 0; $i < 3; ++$i) {ckit()}
+BsDiPa::core_io_cookie_gut($cx) if BsDiPa::HAVE_XZ;
 
 done_testing()
 # s-itt-mode

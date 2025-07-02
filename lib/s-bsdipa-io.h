@@ -89,18 +89,25 @@ extern "C" {
 
 #if s_BSDIPA_IO_H == 0
 /* An optional cookie that may be used by the I/O layer for caching purposes if set.
- * It must be zeroed before first use, and may only be used by one thread at a time.
- * It may then be passed to read and write functions.
- * Once no more use is to be expected, a I/O layer specific _gut_*() must be called:
- * not all I/O layers may have a gut() function. */
+ * The actual I/O layer has a specific "subclass", plus a s_bsdipa_io_cookie_gut_*() function if cookies are really
+ * supported: the subclass must actually be used!
+ * It must be zeroed before first use, then .ioc_type be set to s_BSDIPA_IO_(XZ);
+ * setting .ioc_level is optional and may be used by the layer to adjust compression.
+ * It may then be passed to read and write functions, from within one thread at a time.
+ * Once no more use is to be expected, the according _gut_*() function must be called.
+ *
+ * Note: during all the life time the memory allocator must not change!
+ * If the cookie is used for s_bsdipa_diff() as well as s_bsdipa_patch(), then the memory allocator and its cookie (if
+ * used) must be the same throughout the lifetime of the I/O cookie! */
 struct s_bsdipa_io_cookie{
-	uint8_t ioc__dummy[4];
-	uint32_t ioc_type;
-	void *ioc_obj;
+	uint8_t ioc_is_init;
+	uint8_t ioc_type; /* s_BSDIPA_IO_(XZ): actual type */
+	uint8_t ioc__dummy[2];
+	uint32_t ioc_level; /* some compression level, if supported */
 };
 
 /* The function to free resources of a io_cookie, if any were ever allocated. */
-typedef void (*s_bsdipa_io_gut_fun)(struct s_bsdipa_io_cookie *cookie);
+typedef void (*s_bsdipa_io_gut_fun)(struct s_bsdipa_io_cookie *io_cookie);
 
 # ifdef s_BSDIPA_IO_WRITE
 /* I/O write hook.
@@ -110,10 +117,11 @@ typedef void (*s_bsdipa_io_gut_fun)(struct s_bsdipa_io_cookie *cookie);
  * negative and the ownership of dat is transferred to the hook by definition -- and only then:
  * in fact the absolute value of is_last is the buffer size, of which len bytes are useful;
  * Note that *only* in this case the buffer size is at least one greater than len! */
-typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *cookie, uint8_t const *dat, s_bsdipa_off_t len,
+typedef enum s_bsdipa_state (*s_bsdipa_io_write_ptf)(void *hook_cookie, uint8_t const *dat, s_bsdipa_off_t len,
 		s_bsdipa_off_t is_last);
 typedef enum s_bsdipa_state (*s_bsdipa_io_write_fun)(struct s_bsdipa_diff_ctx const *dcp,
-		s_bsdipa_io_write_ptf hook, void *cookie, int try_oneshot, struct s_bsdipa_io_cookie *cookie_or_null);
+		s_bsdipa_io_write_ptf hook, void *hook_cookie, int try_oneshot,
+		struct s_bsdipa_io_cookie *io_cookie_or_null);
 # endif
 
 # ifdef s_BSDIPA_IO_READ
@@ -126,7 +134,7 @@ typedef enum s_bsdipa_state (*s_bsdipa_io_write_fun)(struct s_bsdipa_diff_ctx co
  * and call s_bsdipa_patch() to apply the real patch.
  * (.pc_restored_dat will be overwritten by s_bsdipa_patch().) */
 typedef enum s_bsdipa_state (*s_bsdipa_io_read_fun)(struct s_bsdipa_patch_ctx *pcp,
-		struct s_bsdipa_io_cookie *cookie_or_null);
+		struct s_bsdipa_io_cookie *io_cookie_or_null);
 # endif
 #endif /* s_BSDIPA_IO_H==0 */
 
@@ -144,28 +152,30 @@ typedef enum s_bsdipa_state (*s_bsdipa_io_read_fun)(struct s_bsdipa_patch_ctx *p
 
 # ifdef s_BSDIPA_IO_WRITE
 s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
-s_bsdipa_io_write_raw(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *cookie, int try_oneshot,
-		struct s_bsdipa_io_cookie *cookie_or_null){
+s_bsdipa_io_write_raw(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *hook_cookie,
+		int try_oneshot, struct s_bsdipa_io_cookie *io_cookie_or_null){
 	struct s_bsdipa_ctrl_chunk *ccp;
 	enum s_bsdipa_state rv;
 	(void)try_oneshot;
-	(void)cookie_or_null;
+	(void)io_cookie_or_null;
 
-	if((rv = (*hook)(cookie, dcp->dc_header, sizeof(dcp->dc_header), 0)) != s_BSDIPA_OK)
+	if((rv = (*hook)(hook_cookie, dcp->dc_header, sizeof(dcp->dc_header), 0)) != s_BSDIPA_OK)
 		goto jleave;
 
 	s_BSDIPA_DIFF_CTX_FOREACH_CTRL(dcp, ccp){
-		if((rv = (*hook)(cookie, ccp->cc_dat, ccp->cc_len, 0)) != s_BSDIPA_OK)
+		if((rv = (*hook)(hook_cookie, ccp->cc_dat, ccp->cc_len, 0)) != s_BSDIPA_OK)
 			goto jleave;
 	}
 
-	if(dcp->dc_diff_len > 0 && (rv = (*hook)(cookie, dcp->dc_diff_dat, dcp->dc_diff_len, 0)) != s_BSDIPA_OK)
+	if(dcp->dc_diff_len > 0 &&
+			(rv = (*hook)(hook_cookie, dcp->dc_diff_dat, dcp->dc_diff_len, 0)) != s_BSDIPA_OK)
 		goto jleave;
 
-	if(dcp->dc_extra_len > 0 && (rv = (*hook)(cookie, dcp->dc_extra_dat, dcp->dc_extra_len, 0)) != s_BSDIPA_OK)
+	if(dcp->dc_extra_len > 0 &&
+			(rv = (*hook)(hook_cookie, dcp->dc_extra_dat, dcp->dc_extra_len, 0)) != s_BSDIPA_OK)
 		goto jleave;
 
-	rv = (*hook)(cookie, NULL, 0, 1);
+	rv = (*hook)(hook_cookie, NULL, 0, 1);
 jleave:
 	return rv;
 }
@@ -173,12 +183,12 @@ jleave:
 
 # ifdef s_BSDIPA_IO_READ
 s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
-s_bsdipa_io_read_raw(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *cookie_or_null){
+s_bsdipa_io_read_raw(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *io_cookie_or_null){
 	enum s_bsdipa_state rv;
 	uint64_t pl;
 	uint8_t const *pd;
 	uint8_t *rd;
-	(void)cookie_or_null;
+	(void)io_cookie_or_null;
 
 	rd = NULL;
 	pd = pcp->pc_patch_dat;
@@ -261,10 +271,33 @@ jleave:
 static voidpf s__bsdipa_io_zlib_alloc(voidpf my_cookie, uInt no, uInt size);
 static void s__bsdipa_io_zlib_free(voidpf my_cookie, voidpf dat);
 
+static voidpf
+s__bsdipa_io_zlib_alloc(voidpf my_cookie, uInt no, uInt size){
+	voidpf rv;
+	size_t memsz;
+	struct s_bsdipa_memory_ctx *mcp;
+
+	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
+	memsz = (size_t)no * size;
+
+	rv = (mcp->mc_alloc != NULL) ? (*mcp->mc_alloc)(memsz) : (*mcp->mc_custom_alloc)(mcp->mc_custom_cookie, memsz);
+
+	return rv;
+}
+
+static void
+s__bsdipa_io_zlib_free(voidpf my_cookie, voidpf dat){
+	struct s_bsdipa_memory_ctx *mcp;
+
+	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
+
+	(mcp->mc_alloc != NULL) ? (*mcp->mc_free)(dat) : (*mcp->mc_custom_free)(mcp->mc_custom_cookie, dat);
+}
+
 # ifdef s_BSDIPA_IO_WRITE /* {{{ */
 s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
-s_bsdipa_io_write_zlib(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *cookie, int try_oneshot,
-		struct s_bsdipa_io_cookie *cookie_or_null){
+s_bsdipa_io_write_zlib(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *hook_cookie,
+		int try_oneshot, struct s_bsdipa_io_cookie *io_cookie_or_null){
 	z_stream zs;
 	struct s_bsdipa_ctrl_chunk *ccp;
 	char x;
@@ -273,7 +306,7 @@ s_bsdipa_io_write_zlib(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_pt
 	size_t olen;
 	s_bsdipa_off_t diflen, extlen;
 	z_streamp zsp;
-	(void)cookie_or_null;
+	(void)io_cookie_or_null;
 
 	zsp = &zs;
 	zs.zalloc = &s__bsdipa_io_zlib_alloc;
@@ -396,7 +429,7 @@ jolenmax:
 				}else
 					xarg = (try_oneshot < 0) ? -(s_bsdipa_off_t)++olen : 1;
 
-				if((rv = (*hook)(cookie, obuf, z, xarg)) != s_BSDIPA_OK)
+				if((rv = (*hook)(hook_cookie, obuf, z, xarg)) != s_BSDIPA_OK)
 					goto jdone;
 
 				if(xarg){
@@ -432,14 +465,14 @@ jleave:
 
 # ifdef s_BSDIPA_IO_READ /* {{{ */
 s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
-s_bsdipa_io_read_zlib(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *cookie_or_null){
+s_bsdipa_io_read_zlib(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *io_cookie_or_null){
 	uint8_t hbuf[sizeof(struct s_bsdipa_header)];
 	z_stream zs;
 	s_bsdipa_off_t reslen;
 	enum s_bsdipa_state rv;
 	z_streamp zsp;
 	uint64_t patlen;
-	(void)cookie_or_null;
+	(void)io_cookie_or_null;
 
 	pcp->pc_restored_dat = NULL;
 	patlen = pcp->pc_patch_len;
@@ -544,29 +577,6 @@ jdone:
 }
 # endif /* }}} s_BSDIPA_IO_READ */
 
-static voidpf
-s__bsdipa_io_zlib_alloc(voidpf my_cookie, uInt no, uInt size){
-	voidpf rv;
-	size_t memsz;
-	struct s_bsdipa_memory_ctx *mcp;
-
-	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
-	memsz = (size_t)no * size;
-
-	rv = (mcp->mc_alloc != NULL) ? (*mcp->mc_alloc)(memsz) : (*mcp->mc_custom_alloc)(mcp->mc_custom_cookie, memsz);
-
-	return rv;
-}
-
-static void
-s__bsdipa_io_zlib_free(voidpf my_cookie, voidpf dat){
-	struct s_bsdipa_memory_ctx *mcp;
-
-	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
-
-	(mcp->mc_alloc != NULL) ? (*mcp->mc_free)(dat) : (*mcp->mc_custom_free)(mcp->mc_custom_cookie, dat);
-}
-
 # undef s__BSDIPA_IO_ZLIB_LIMIT
 # undef s_BSDIPA_IO_ZLIB_LEVEL
 /* }}} */
@@ -597,13 +607,79 @@ s__bsdipa_io_zlib_free(voidpf my_cookie, voidpf dat){
  /* For testing purposes */
 # define s__BSDIPA_IO_XZ_LIMIT (INT32_MAX - 1)
 
+struct s_bsdipa_io_cookie_xz{
+	struct s_bsdipa_io_cookie iocx_super;
+	struct s_bsdipa_memory_ctx iocx_mctx;
+	lzma_stream iocx_s;
+	lzma_allocator iocx_a;
+};
+
+/* fun {{{ */
 static void *s__bsdipa_io_xz_alloc(void *my_cookie, size_t no, size_t size);
 static void s__bsdipa_io_xz_free(void *my_cookie, void *dat);
+static inline lzma_stream *s__bsdipa_io_cookie_create_xz(struct s_bsdipa_io_cookie *iocp,
+		struct s_bsdipa_memory_ctx const *mcp);
+
+static void *
+s__bsdipa_io_xz_alloc(void *my_cookie, size_t no, size_t size){
+	void *rv;
+	size_t memsz;
+	struct s_bsdipa_memory_ctx *mcp;
+
+	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
+	memsz = no * size;
+
+	rv = (mcp->mc_alloc != NULL) ? (*mcp->mc_alloc)(memsz) : (*mcp->mc_custom_alloc)(mcp->mc_custom_cookie, memsz);
+
+	return rv;
+}
+
+static void
+s__bsdipa_io_xz_free(void *my_cookie, void *dat){
+	struct s_bsdipa_memory_ctx *mcp;
+
+	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
+
+	/* (lzma/base.h does not say, but not only what came via alloc()..) */
+	if(dat != NULL)
+		(mcp->mc_alloc != NULL) ? (*mcp->mc_free)(dat) : (*mcp->mc_custom_free)(mcp->mc_custom_cookie, dat);
+}
+
+static inline lzma_stream *
+s__bsdipa_io_cookie_create_xz(struct s_bsdipa_io_cookie *iocp, struct s_bsdipa_memory_ctx const *mcp){
+	struct s_bsdipa_io_cookie_xz *iocxp;
+
+	iocxp = (struct s_bsdipa_io_cookie_xz*)iocp;
+
+	if(!iocxp->iocx_super.ioc_is_init){
+		iocxp->iocx_super.ioc_is_init = 1;
+		if(iocxp->iocx_super.ioc_level == 0)
+			iocxp->iocx_super.ioc_level = s_BSDIPA_IO_XZ_PRESET;
+		iocxp->iocx_mctx = *mcp;
+		iocxp->iocx_a.alloc = &s__bsdipa_io_xz_alloc;
+		iocxp->iocx_a.free = &s__bsdipa_io_xz_free;
+		iocxp->iocx_a.opaque = (void*)&iocxp->iocx_mctx;
+		iocxp->iocx_s.allocator = &iocxp->iocx_a;
+	}
+
+	return &iocxp->iocx_s;
+}
+
+s_BSDIPA_IO_LINKAGE void
+s_bsdipa_io_cookie_gut_xz(struct s_bsdipa_io_cookie *iocp){
+	if(iocp != NULL && iocp->ioc_is_init && iocp->ioc_type == s_BSDIPA_IO_XZ){
+		struct s_bsdipa_io_cookie_xz *iocxp;
+
+		iocxp = (struct s_bsdipa_io_cookie_xz*)iocp;
+		lzma_end(&iocxp->iocx_s);
+	}
+}
+/* }}} */
 
 # ifdef s_BSDIPA_IO_WRITE /* {{{ */
 s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
-s_bsdipa_io_write_xz(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *cookie, int try_oneshot,
-		struct s_bsdipa_io_cookie *cookie_or_null){
+s_bsdipa_io_write_xz(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf hook, void *hook_cookie,
+		int try_oneshot, struct s_bsdipa_io_cookie *io_cookie_or_null){
 	lzma_stream zs, *zsp;
 	lzma_allocator za;
 	struct s_bsdipa_ctrl_chunk *ccp;
@@ -612,15 +688,22 @@ s_bsdipa_io_write_xz(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf 
 	uint8_t *obuf;
 	size_t olen;
 	s_bsdipa_off_t diflen, extlen;
-	(void)cookie_or_null;
+	uint32_t preset;
 
-	memset(zsp = &zs, 0, sizeof(zs));
-	za.alloc = &s__bsdipa_io_xz_alloc;
-	za.free = &s__bsdipa_io_xz_free;
-	za.opaque = (void*)&dcp->dc_mem;
-	zs.allocator = &za;
+	if(io_cookie_or_null == NULL || io_cookie_or_null->ioc_type != s_BSDIPA_IO_XZ){
+		io_cookie_or_null = NULL;
+		memset(zsp = &zs, 0, sizeof(zs));
+		za.alloc = &s__bsdipa_io_xz_alloc;
+		za.free = &s__bsdipa_io_xz_free;
+		za.opaque = (void*)&dcp->dc_mem;
+		zsp->allocator = &za;
+		preset = s_BSDIPA_IO_XZ_PRESET;
+	}else{
+		zsp = s__bsdipa_io_cookie_create_xz(io_cookie_or_null, &dcp->dc_mem);
+		preset = io_cookie_or_null->ioc_level;
+	}
 
-	switch(lzma_easy_encoder(zsp, s_BSDIPA_IO_XZ_PRESET, s_BSDIPA_IO_XZ_CHECK)){
+	switch(lzma_easy_encoder(zsp, preset, s_BSDIPA_IO_XZ_CHECK)){
 	case LZMA_OK: break;
 	case LZMA_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jleave;
 	/* LZMA_OPTIONS_ERROR: */
@@ -738,7 +821,7 @@ jolenmax:
 				}else
 					xarg = (try_oneshot < 0) ? -(s_bsdipa_off_t)++olen : 1;
 
-				if((rv = (*hook)(cookie, obuf, z, xarg)) != s_BSDIPA_OK)
+				if((rv = (*hook)(hook_cookie, obuf, z, xarg)) != s_BSDIPA_OK)
 					goto jdone;
 
 				if(xarg){
@@ -765,7 +848,9 @@ jdone:
 	if(obuf != NULL)
 		s__bsdipa_io_xz_free((void*)&dcp->dc_mem, obuf);
 
-	lzma_end(zsp);
+	if(io_cookie_or_null == NULL)
+		lzma_end(zsp);
+
 jleave:
 	return rv;
 }
@@ -773,27 +858,30 @@ jleave:
 
 # ifdef s_BSDIPA_IO_READ /* {{{ */
 s_BSDIPA_IO_LINKAGE enum s_bsdipa_state
-s_bsdipa_io_read_xz(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *cookie_or_null){
+s_bsdipa_io_read_xz(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *io_cookie_or_null){
 	uint8_t hbuf[sizeof(struct s_bsdipa_header)];
 	lzma_stream zs, *zsp;
 	lzma_allocator za;
 	s_bsdipa_off_t reslen;
 	enum s_bsdipa_state rv;
 	uint64_t patlen;
-	(void)cookie_or_null;
 
 	pcp->pc_restored_dat = NULL;
 	patlen = pcp->pc_patch_len;
 
-	memset(zsp = &zs, 0, sizeof(zs));
-	za.alloc = &s__bsdipa_io_xz_alloc;
-	za.free = &s__bsdipa_io_xz_free;
-	za.opaque = (void*)&pcp->pc_mem;
-	zs.allocator = &za;
+	if(io_cookie_or_null == NULL || io_cookie_or_null->ioc_type != s_BSDIPA_IO_XZ){
+		io_cookie_or_null = NULL;
+		memset(zsp = &zs, 0, sizeof(zs));
+		za.alloc = &s__bsdipa_io_xz_alloc;
+		za.free = &s__bsdipa_io_xz_free;
+		za.opaque = (void*)&pcp->pc_mem;
+		zsp->allocator = &za;
+	}else
+		zsp = s__bsdipa_io_cookie_create_xz(io_cookie_or_null, &pcp->pc_mem);
 
-	zs.next_in = pcp->pc_patch_dat;
-	zs.avail_in = (patlen > s__BSDIPA_IO_XZ_LIMIT) ? s__BSDIPA_IO_XZ_LIMIT : (size_t)patlen;
-	patlen -= zs.avail_in;
+	zsp->next_in = pcp->pc_patch_dat;
+	zsp->avail_in = (patlen > s__BSDIPA_IO_XZ_LIMIT) ? s__BSDIPA_IO_XZ_LIMIT : (size_t)patlen;
+	patlen -= zsp->avail_in;
 
 	switch(lzma_stream_decoder(zsp, UINT64_MAX, LZMA_FAIL_FAST)){
 	case LZMA_OK: break;
@@ -878,7 +966,8 @@ s_bsdipa_io_read_xz(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *c
 	}
 
 jdone:
-	lzma_end(zsp);
+	if(io_cookie_or_null == NULL)
+		lzma_end(zsp);
 
 	if(rv != s_BSDIPA_OK && pcp->pc_restored_dat != NULL){
 		s__bsdipa_io_xz_free(&pcp->pc_mem, pcp->pc_restored_dat);
@@ -888,31 +977,6 @@ jdone:
 	return rv;
 }
 # endif /* }}} s_BSDIPA_IO_READ */
-
-static void *
-s__bsdipa_io_xz_alloc(void *my_cookie, size_t no, size_t size){
-	void *rv;
-	size_t memsz;
-	struct s_bsdipa_memory_ctx *mcp;
-
-	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
-	memsz = no * size;
-
-	rv = (mcp->mc_alloc != NULL) ? (*mcp->mc_alloc)(memsz) : (*mcp->mc_custom_alloc)(mcp->mc_custom_cookie, memsz);
-
-	return rv;
-}
-
-static void
-s__bsdipa_io_xz_free(void *my_cookie, void *dat){
-	struct s_bsdipa_memory_ctx *mcp;
-
-	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
-
-	/* (lzma/base.h does not say, but not only what came via alloc()..) */
-	if(dat != NULL)
-		(mcp->mc_alloc != NULL) ? (*mcp->mc_free)(dat) : (*mcp->mc_custom_free)(mcp->mc_custom_cookie, dat);
-}
 
 # undef s__BSDIPA_IO_XZ_LIMIT
 # undef s_BSDIPA_IO_XZ_CHECK
