@@ -238,9 +238,11 @@ jleave:
 		pcp->pc_restored_dat = rd;
 		pcp->pc_restored_len = (s_bsdipa_off_t)pl;
 	}else{
+#  if 0
 		if(rd != NULL)
 			(pcp->pc_mem.mc_alloc != NULL) ? (*pcp->pc_mem.mc_free)(rd)
 				: (*pcp->pc_mem.mc_custom_free)(pcp->pc_mem.mc_custom_cookie, rd);
+#  endif
 		pcp->pc_restored_dat = NULL;
 	}
 
