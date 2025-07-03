@@ -40,14 +40,14 @@
 .
 .Pp
 .Nm \*(xX
-.Op Fl fHJR
+.Op Fl fHJR1-9
 .Ar diff
 .Ar before
 .Ar after
 .Ar patch
 .
 .Nm \*(xX
-.Op Fl fHJR
+.Op Fl fHJR1-9
 .Ar diff/WINDOW
 .Ar before
 .Ar after
@@ -86,6 +86,9 @@ but values outside the range 4 to 64 hardly seem useful.
 .Ss "Options"
 .
 .Bl -tag -compact -width ".It Fl BaNg"
+.It Fl 1 Ns \0\(em Fl 9
+Select compression level, with 1 being weakest and 9 being strongest.
+Silently ignored if unsupported by the method.
 .It Fl f
 Overwrite an existing target file.
 .It Fl H

@@ -56,8 +56,6 @@
 #ifdef s__BSDIPA_XZ
 # undef s_BSDIPA_IO
 # define s_BSDIPA_IO s_BSDIPA_IO_XZ
-/*# define s_BSDIPA_IO_XZ_PRESET 9*/
-/*# define s_BSDIPA_IO_XZ_CHECK LZMA_CHECK_NONE*/
 # include "s-bsdipa-io.h"
 #endif
 
@@ -278,6 +276,7 @@ main(int argc, char *argv[]){
 		a_NO_HEADER = 1u<<1,
 		a_NO_ACT = 1u<<2,
 		a_IO_DEF = 1u<<3,
+		a_IO_COOKIE = 1u<<4,
 
 		a_UNLINK = 1u<<8,
 		a_CLOSE = 1u<<9,
@@ -291,6 +290,12 @@ main(int argc, char *argv[]){
 #if a_STATS
 	a_CLOCK_T ts, te, ts2, te2;
 #endif
+	union{
+		struct s_bsdipa_io_cookie c;
+#ifdef s__BSDIPA_XZ
+		struct s_bsdipa_io_cookie_xz cx;
+#endif
+	} ioc;
 	union{
 		struct s_bsdipa_memory_ctx m;
 		struct s_bsdipa_patch_ctx p;
@@ -306,11 +311,16 @@ main(int argc, char *argv[]){
 	emsg = inbef = targetname = NULL;
 	pfp = NULL;
 
+	/* getopt */
 	f = a_NONE;
 	iop = NULL;
 
-	while((rv = getopt(argc, argv, "fHhJRz")) != -1)
+	while((rv = getopt(argc, argv, "123456789fHhJRz")) != -1)
 		switch(rv){
+		case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+			f |= a_IO_COOKIE;
+			ioc.c.ioc_level = rv - '0';
+			break;
 		case 'f': f |= a_FORCE; break;
 		case 'H': f |= a_NO_HEADER; break;
 		case 'h': f |= a_NO_ACT; rv = a_EX_OK; goto juse;
@@ -328,6 +338,20 @@ main(int argc, char *argv[]){
 		iop = &a_io_meths[s_BSDIPA_IO_ZLIB];
 		f |= a_IO_DEF;
 	}
+	if(f & a_IO_COOKIE){
+		uint32_t lvl;
+
+		lvl = ioc.c.ioc_level;
+		memset(&ioc, 0, sizeof ioc);
+		ioc.c.ioc_level = lvl;
+
+#ifdef s__BSDIPA_XZ
+		if(iop == &a_io_meths[s_BSDIPA_IO_XZ])
+			ioc.c.ioc_type = s_BSDIPA_IO_XZ;
+		else
+#endif
+			f ^= a_IO_COOKIE;
+	}
 
 	if(optind >= argc)
 		goto jeuse;
@@ -336,6 +360,7 @@ main(int argc, char *argv[]){
 	if(argc != 4)
 		goto jeuse;
 
+	/* operation option */
 	c.m.mc_alloc = &a_alloc;
 	c.m.mc_free = &a_free;
 
@@ -343,6 +368,10 @@ main(int argc, char *argv[]){
 
 	targetname = argv[0];
 	if(!strcmp(targetname, "patch")){
+		/* No compression level */
+		if(f & a_IO_COOKIE)
+			goto jeuse;
+
 		targetname = "restored";
 		inbef = NULL;
 		inaft = argv[1];
@@ -372,6 +401,7 @@ main(int argc, char *argv[]){
 		targetname = "patch";
 	}
 
+	/* target file */
 	fd = open(argv[3], (O_WRONLY | O_BINARY | O_CREAT | (f & a_FORCE ? O_TRUNC : O_EXCL)), 0666);
 	if(fd == -1){
 		emsg = "cannot create";
@@ -385,10 +415,12 @@ main(int argc, char *argv[]){
 	}
 	f ^= a_CLOSE | a_FCLOSE;
 
+	/* after input */
 	if(!a_mmap(inaft, "after", &c.d.dc_after_len, &c.d.dc_after_dat))
 		goto jleave;
 	f |= a_UNMAP_AFTER;
 
+	/* operation: "diff" */
 	if(inbef != NULL){
 		if(!a_mmap(inbef, "before", &c.d.dc_before_len, &c.d.dc_before_dat))
 			goto jleave;
@@ -404,6 +436,7 @@ main(int argc, char *argv[]){
 		if(s != s_BSDIPA_OK)
 			goto jes;
 
+		/* write (header and) patch to target file */
 		emsg = "I/O error";
 		if(!(f & a_NO_HEADER) && fprintf(pfp, "BSDIPA%s/%s/", a_NAME_BITS, iop->io_n) <= 0){
 			errno = EIO;
@@ -413,7 +446,7 @@ main(int argc, char *argv[]){
 
 			a_CLOCK(&ts2);
 
-			switch(iop->io_w(&c.d, &a_hook_write, pfp, 0, NULL)){
+			switch(iop->io_w(&c.d, &a_hook_write, pfp, 0, (f & a_IO_COOKIE ? &ioc.c : NULL))){
 			default: e = 0; break;
 			case s_BSDIPA_FBIG: e = EFBIG; break;
 			case s_BSDIPA_NOMEM: e = ENOMEM; break;
@@ -427,7 +460,9 @@ main(int argc, char *argv[]){
 				goto Jioerr;
 			}
 		}
-	}else{
+	}
+	/* operation: "patch" */
+	else{
 		size_t headlen;
 
 		c.p.pc_after_dat = c.d.dc_after_dat;
@@ -438,6 +473,7 @@ main(int argc, char *argv[]){
 			goto jleave;
 		f |= a_UNMAP_2ND;
 
+		/* Unless turned off, carefully verify header, and auto-detect I/O method */
 		if(f & a_NO_HEADER)
 			headlen = 0; /* UNINIT */
 		else{
@@ -486,7 +522,7 @@ jpsrch:
 			}
 		}
 
-		/* Decompress patch */
+		/* Decompress patch.. */
 		/* C99 */{
 			int e;
 
@@ -510,6 +546,7 @@ jpsrch:
 				c.p.pc_patch_dat -= headlen;
 				c.p.pc_patch_len += headlen;
 			}
+
 			munmap((void*)c.p.pc_patch_dat, (size_t)c.p.pc_patch_len + 1);
 			f ^= a_UNMAP_2ND;
 
@@ -520,6 +557,7 @@ jpsrch:
 				goto Jioerr;
 			}
 
+			/* and make that our new real patch input */
 			f |= a_FREE_2ND;
 			c.p.pc_patch_dat = c.p.pc_restored_dat;
 			c.p.pc_patch_len = c.p.pc_restored_len;
@@ -536,6 +574,7 @@ jpsrch:
 		if(s != s_BSDIPA_OK)
 			goto jes;
 
+		/* write restored data to target file */
 		emsg = "I/O error";
 		/* C99 */{
 			uint8_t const *dat;
@@ -557,6 +596,7 @@ jpsrch:
 		}
 	}
 
+	/* finalize target I/O */
 	if(fflush(pfp) == EOF){
 		errno = EIO;
 		goto Jioerr;
@@ -566,6 +606,17 @@ jpsrch:
 		rv = a_EX_OK;
 
 jleave:
+	/* lots of teardown, most debug-optional */
+#ifndef NDEBUG
+	if(f & a_IO_COOKIE){
+# ifdef s__BSDIPA_XZ
+		if(ioc.c.ioc_type == s_BSDIPA_IO_XZ)
+			s_bsdipa_io_cookie_gut_xz(&ioc.c);
+# endif
+		f ^= a_IO_COOKIE;
+	}
+#endif
+
 #ifndef NDEBUG
 	if(f & a_CLOSE){
 		assert(!(f & a_FCLOSE));
@@ -627,6 +678,7 @@ jleave:
 		fprintf(stderr, "ERROR: removing \"%s\" failed: %s\n", targetname, strerror(errno));
 	}
 
+	/* optional statistical output */
 #if a_STATS
 	if(!(f & a_NO_ACT) && rv == a_EX_OK){
 		a_CLOCK_SUB(&te, &ts);
@@ -667,9 +719,9 @@ juse:
 	fprintf((rv == a_EX_OK ? stdout : stderr),
 		a_NAME " (" s_BSDIPA_VERSION "): create or apply binary difference patch\n"
 		"\n"
-		"  " a_NAME a_NAME_BITS " [-fHJRz] patch    after  patch restored\n"
-		"  " a_NAME a_NAME_BITS " [-fHJRz] diff     before after patch\n"
-		"  " a_NAME a_NAME_BITS " [-fHJRz] diff/WIN before after patch\n"
+		"  " a_NAME a_NAME_BITS " [-fHJRz]    patch    after  patch restored\n"
+		"  " a_NAME a_NAME_BITS " [-fHJRz1-9] diff     before after patch\n"
+		"  " a_NAME a_NAME_BITS " [-fHJRz1-9] diff/WIN before after patch\n"
 		"\n"
 		"The first uses \"patch\" to create \"restored\" from \"after\";\n"
 		"if a compression method is given, it must match the detected one.\n"
@@ -677,6 +729,7 @@ juse:
 		"they differ in the size of the \"magic window\": diff uses the built-in value,\n"
 		"diff/WIN uses WINdow, a positive number <= 4096.\n"
 		"\n"
+		"-1  (weakest) to -9 (strongest) select compression level (or are ignored)\n"
 		"-f  overwrite an existing target file\n"
 		"-H  do not read/write file identity header; one of -[JRz] must be set\n"
 		"    (\"BSDIPA\" + \"32\" or \"64\" + \"/\" plus I/O type + \"/\")\n"

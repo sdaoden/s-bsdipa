@@ -50,7 +50,7 @@ n() {
 }
 
 tx() {
-	eval $DP $2 diff t$1.b t$1.a t$1.$2.p $REDIR
+	eval $DP $2 $3 diff t$1.b t$1.a t$1.$2.p $REDIR
 	y $? $1.$2.1
 
 	eval $DP patch t$1.a t$1.$2.p t$1.$2.r $REDIR
@@ -98,7 +98,7 @@ if [ -f ../../lib/s-bsdiff.o ] && [ -f ../../lib/s-bspatch.o ]; then
 	eval $DD if=../../lib/s-bsdiff.o of=t6.b $REDIR
 	eval $DD if=../../lib/s-bspatch.o of=t6.a $REDIR
 	tx 6 -z
-	[ -n "$DPXZ" ] && tx 6 -J
+	[ -n "$DPXZ" ] && tx 6 -J -6
 	tx 6 -R
 else
 	echo >&2 'SKIP TESTS 6: cannot find my object files'
@@ -114,7 +114,7 @@ if [ -c /dev/urandom ]; then
 	eval $DD if=/dev/urandom bs=512 count=10 of=t8.b $REDIR
 	eval $DD if=/dev/urandom bs=768 count=10 of=t8.a $REDIR
 	tx 8 -z
-	[ -n "$DPXZ" ] && tx 8 -J
+	[ -n "$DPXZ" ] && tx 8 -J -9
 	tx 8 -R
 else
 	echo >&2 'SKIP TESTS 7,8: no /dev/urandom'
@@ -130,7 +130,7 @@ while [ $i -lt 7777 ]; do
 	i=$ix
 done
 tx 9 -z
-[ -n "$DPXZ" ] && tx 9 -J
+[ -n "$DPXZ" ] && tx 9 -J -4
 tx 9 -R
 
 echo 'Ran '$TNO' tests'
