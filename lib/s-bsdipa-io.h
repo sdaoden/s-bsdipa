@@ -885,7 +885,11 @@ s_bsdipa_io_read_xz(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *i
 	zsp->avail_in = (patlen > s__BSDIPA_IO_XZ_LIMIT) ? s__BSDIPA_IO_XZ_LIMIT : (size_t)patlen;
 	patlen -= zsp->avail_in;
 
-	switch(lzma_stream_decoder(zsp, UINT64_MAX, LZMA_FAIL_FAST)){
+	switch(lzma_stream_decoder(zsp, UINT64_MAX, 0
+#ifdef LZMA_FAIL_FAST
+			| LZMA_FAIL_FAST
+#endif
+			)){
 	case LZMA_OK: break;
 	case LZMA_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jdone;
 	/* LZMA_OPTIONS_ERROR: */
