@@ -2,7 +2,7 @@
 #@ s-bsdipa test (simple: full test part of BsDiPa perl XS module)
 
 : ${KEEP_TESTS:=}
-REDIR='>/dev/null 2>/dev/null'
+: ${REDIR:='>/dev/null 2>/dev/null'}
 
 : ${DP:=../s-bsdipa}
 : ${DP32:=}
@@ -53,14 +53,14 @@ tx() {
 	eval $DP $2 $3 diff t$1.b t$1.a t$1.$2.p $REDIR
 	y $? $1.$2.1
 
-	eval $DP patch t$1.a t$1.$2.p t$1.$2.r $REDIR
+	eval $DP patch t$1.a t$1.$2.p t$1.$2.r$4 $REDIR
 	y $? $1.$2.2
-	cmp t$1.b t$1.$2.r
+	cmp t$1.b t$1.$2.r$4
 	y $? $1.$2.3
 
-	eval $DP -f $2 patch t$1.a t$1.$2.p t$1.$2.r $REDIR
+	eval $DP -f $2 patch t$1.a t$1.$2.p t$1.$2.r$4 $REDIR
 	y $? $1.$2.4
-	cmp t$1.b t$1.$2.r
+	cmp t$1.b t$1.$2.r$4
 	y $? $1.$2.5
 }
 
@@ -70,11 +70,51 @@ tx 1 -z
 [ -n "$DPXZ" ] && tx 1 -J
 tx 1 -R
 
-echo > t2.b
-echo > t2.a
-tx 2 -z
-[ -n "$DPXZ" ] && tx 2 -J
-tx 2 -R
+> t2a.b
+> t2a.a
+i=0
+while [ $i -le 100 ]; do
+	ix=
+	[ $i -ne 0 ] && ix=$i
+	echo "$ix" >> t2a.a
+
+	tx 2a -zf '' $i
+	[ -n "$DPXZ" ] && tx 2a -Jf -4 $i
+	tx 2a -Rf '' $i
+
+	i=$((i + 1))
+done
+
+> t2b.b
+> t2b.a
+i=0
+while [ $i -le 100 ]; do
+	ix=
+	[ $i -ne 0 ] && ix=$i
+	echo "$ix" >> t2b.b
+
+	tx 2b -zf '' $i
+	[ -n "$DPXZ" ] && tx 2b -Jf -4 $i
+	tx 2b -Rf '' $i
+
+	i=$((i + 1))
+done
+
+> t2c.b
+> t2c.a
+i=0
+while [ $i -le 100 ]; do
+	ix=
+	[ $i -ne 0 ] && ix=$i
+	echo "$ix" >> t2c.a
+	echo "$ix" >> t2c.b
+
+	tx 2c -zf '' $i
+	[ -n "$DPXZ" ] && tx 2c -Jf -4 $i
+	tx 2c -Rf '' $i
+
+	i=$((i + 1))
+done
 
 ($SEQ 100; echo 0; $SEQ 100) > t3.b
 ($SEQ 100; echo 0; $SEQ 100) > t3.a
@@ -111,8 +151,8 @@ if [ -c /dev/urandom ]; then
 	[ -n "$DPXZ" ] && tx 7 -J
 	tx 7 -R
 
-	eval $DD if=/dev/urandom bs=512 count=10 of=t8.b $REDIR
-	eval $DD if=/dev/urandom bs=768 count=10 of=t8.a $REDIR
+	eval $DD if=/dev/urandom bs=512 count=10 of=t8.a $REDIR
+	eval $DD if=/dev/urandom bs=768 count=10 of=t8.b $REDIR
 	tx 8 -z
 	[ -n "$DPXZ" ] && tx 8 -J -9
 	tx 8 -R
@@ -125,13 +165,33 @@ fi
 i=0
 while [ $i -lt 7777 ]; do
 	ix=$((i + 1))
-	echo $i$i$i$i$i$i$i$i >> t9.b
-	echo $ix$ix$ix$ix$ix$ix$ix >> t9.a
+	echo "$i$i$i$i$i$i$i$i" >> t9.b
+	echo "$ix$ix$ix$ix$ix$ix$ix" >> t9.a
 	i=$ix
 done
 tx 9 -z
 [ -n "$DPXZ" ] && tx 9 -J -4
 tx 9 -R
+
+# (try increase ctrl dat)
+> t10.b
+> t10.a
+i=0
+while [ $i -le 1000 ]; do
+	ix=$((i + 1))
+	echo "$ix" >> t10.a
+	iy=
+	[ $((i % 5)) -eq 0 ] && ix="$ix " iy=y
+	echo "$ix" >> t10.b
+
+	if [ -n "$iy" ]; then
+		tx 10 -zf '' $i
+		[ -n "$DPXZ" ] && tx 10 -Jf -4 $i
+		tx 10 -Rf '' $i
+	fi
+
+	i=$ix
+done
 
 echo 'Ran '$TNO' tests'
 )
