@@ -16,6 +16,7 @@ LIBDIVSUFSORT = libdivsufsort
 
 SUFWW = #-Weverything
 #	-Wconversion -Wsign-conversion \
+
 SUFW = -W -Wall -pedantic $(SUFWW) \
 	\
 	-Wno-atomic-implicit-seq-cst \
