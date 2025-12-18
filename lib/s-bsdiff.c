@@ -210,13 +210,15 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 	if(Ip == NULL)
 		goto jleave;
 
-	/* Effectively only ENOMEM possible */
-	if(divsufsort(aftdat, Ip, aftlen, dcp))
+	/* Effectively only ENOMEM possible; (divsufsort() exits quick on aftlen==0, but condome it) */
+	if(aftlen != 0 && divsufsort(aftdat, Ip, aftlen, dcp))
 		goto jdone;
 
 	/* Compute the differences, writing ctrl as we go */
-	/* C99 */{
-		s_bsdipa_off_t ctrl_len_max, scan, len, pos, lastscan, lastpos, lastoff, aftscore;
+	if(aftlen == 0 && beflen == 0)
+		dcp->dc_is_equal_data = 1;
+	else{
+		s_bsdipa_off_t ctrl_len_max, scan, len, pos, lastscan, lastpos, lastoff, aftscore, i;
 		uint32_t ctrlno;
 		struct s_bsdipa_ctrl_chunk **ccpp, *ccp;
 		int isneq;
@@ -228,17 +230,19 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 		ctrl_len_max = s_BSDIPA_OFF_MAX - beflen - (sizeof(s_bsdipa_off_t) * 3) - 1;
 		scan = len = pos = lastscan = lastpos = lastoff = 0;
 
-		while(scan < beflen){
-			s_bsdipa_off_t scsc;
+		/* a_bsdiff_search() is called with aftlen-1, so bypass algorithm as such, then */
+		if(aftlen == 0)
+			goto Jaftlen0_bypass;
 
+		while(scan < beflen){
 			aftscore = 0;
 
-			for(scsc = (scan += len); scan < beflen; ++scan){
+			for(i = (scan += len); scan < beflen; ++scan){
 				len = a_bsdiff_search(Ip, aftdat, aftlen, befdat + scan, beflen - scan, 0, aftlen - 1,
 						&pos);
 
-				for(; scsc < scan + len; ++scsc)
-					if(scsc + lastoff < aftlen && aftdat[scsc + lastoff] == befdat[scsc])
+				for(; i < scan + len; ++i)
+					if(i + lastoff < aftlen && aftdat[i + lastoff] == befdat[i])
 						++aftscore;
 
 				if((len == aftscore && len != 0) || len > aftscore + dcp->dc_magic_window)
@@ -248,8 +252,14 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 					--aftscore;
 			}
 
-			if(len != aftscore || scan == beflen){
-				s_bsdipa_off_t s, Sf, lenf, i, lenb, j;
+			if(len != aftscore || scan == beflen) Jaftlen0_bypass:{
+				s_bsdipa_off_t s, Sf, lenf, lenb, j;
+
+				if(aftlen == 0){
+					lenf = lenb = 0;
+					j = scan = beflen;
+					goto j_aftlen0_bypass;
+				}
 
 				if(dcp->dc_ctrl_len >= ctrl_len_max){
 					rv = s_BSDIPA_FBIG;
@@ -315,6 +325,7 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 				assert(diffp > extrap);
 
 				j = (scan - lenb) - (lastscan + lenf);
+j_aftlen0_bypass:
 				for(i = 0; i < j; ++i)
 					*extrap++ = befdat[lastscan + lenf + i];
 				dcp->dc_extra_len += j;
