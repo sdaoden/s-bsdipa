@@ -529,8 +529,13 @@ s_bsdipa_io_read_zlib(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie 
 	/* Guaranteed to work! */
 	reslen = pcp->pc_header.h_ctrl_len + pcp->pc_header.h_diff_len + pcp->pc_header.h_extra_len;
 
+	/* But allocator may not deal */
+	if((size_t)reslen != (uInt)reslen){
+		rv = s_BSDIPA_NOMEM;
+		goto jdone;
+	}
 	pcp->pc_restored_len = reslen;
-	pcp->pc_restored_dat = (uint8_t*)s__bsdipa_io_zlib_alloc(&pcp->pc_mem, 1, (uInt)reslen); /* (s_BSDIPA_32=y) */
+	pcp->pc_restored_dat = (uint8_t*)s__bsdipa_io_zlib_alloc(&pcp->pc_mem, 1, (uInt)reslen);
 	if(pcp->pc_restored_dat == NULL){
 		rv = s_BSDIPA_NOMEM;
 		goto jdone;

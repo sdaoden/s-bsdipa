@@ -60,6 +60,9 @@ typedef char ASSERTION_failed__off_max[OFF_MAX != INT32_MAX ? 1 : -1];
 /* Checks use saidx_t, but the patch code uses s_bsdipa_off_t, so these must be of EQ size! */
 typedef char ASSERTION_failed__bsdipa_off_eq_saidx[sizeof(s_bsdipa_off_t) == sizeof(saidx_t) ? 1 : -1];
 
+/* More type preconditions */
+typedef char ASSERTION_failed__bsdipa_off_fits_size[(uint64_t)s_BSDIPA_OFF_MAX <= (uint64_t)SIZE_MAX>>1 ? 1 : -1];
+
 /* (Could be shared with s-bspatch.c) */
 static void *a_bsdiff_alloc(void *vp, size_t size);
 static void a_bsdiff_free(void *vp, void *dat);

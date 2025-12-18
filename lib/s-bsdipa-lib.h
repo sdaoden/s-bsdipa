@@ -5,6 +5,8 @@
  *@ - if s_BSDIPA_32 is configured, 31-bit instead of 63-bit limits.
  *@ - Note: the real limit is maximally SIZE_MAX/sizeof(s_bsdipa_off_t)
  *@   (with 32-bit size_t this can be restrictive)!
+ *@   Note s_BSDIPA_OFF_MAX must be <= SIZE_MAX>>1; several such conditions
+ *@   are compile-time asserted in s-bsdiff.c.
  *@ - algorithm requires a lot of memory, multiple times the input size!
  *@   With s_BSDIPA_32 the overhead can almost be halved.
  *@ - code requires an ISO STD C99 environment.
