@@ -96,6 +96,20 @@ Allocation failure.
 
 Any other error, like invalid argument.
 
+=item C<core_try_oneshot_set($nval)>
+
+Please see the C library for documentation.
+No value check is performed for this global setting that is
+neither multithread-safe nor generally applicable.
+
+=item C<core_diff_level_set($level)>
+
+Sets a default compression C<$level>.
+This is only used if no I/O cookie is used (see below),
+and what it actually means depends on the used compression.
+No value check is performed for this global setting that is
+neither multithread-safe nor generally applicable.
+
 =item C<core_diff_zlib($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0, $io_cookie=0)>
 
 Create a compressed binary diff

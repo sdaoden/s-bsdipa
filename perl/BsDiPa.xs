@@ -62,8 +62,8 @@ union a_io_cookie{
 #endif
 };
 
-/* For testing purposes allow changes via _try_oneshot_set() */
 static IV a_try_oneshot = -1;
+static IV a_level = 0;
 static IV const a_have_xz = s__BSDIPA_XZ;
 
 static void *a_alloc(size_t size);
@@ -93,8 +93,8 @@ a_free(void *vp){
 
 static SV *
 a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_window, SV *is_equal_data, SV *io_cookie){
+	struct s_bsdipa_io_cookie ioc, *iocp;
 	struct s_bsdipa_diff_ctx d;
-	struct s_bsdipa_io_cookie *iocp;
 	SV *pref, *iseq;
 	enum s_bsdipa_state s;
 
@@ -131,9 +131,14 @@ a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_windo
 	else
 		iseq = SvRV(is_equal_data);
 
-	if(io_cookie == NULL || !SvIOK(io_cookie))
-		iocp = NULL;
-	else
+	if(io_cookie == NULL || !SvIOK(io_cookie)){
+		if(a_level == 0)
+			iocp = NULL;
+		else{
+			memset(iocp = &ioc, 0, sizeof(ioc));
+			iocp->ioc_level = a_level;
+		}
+	}else
 		iocp = INT2PTR(struct s_bsdipa_io_cookie*,SvIV(io_cookie));
 
 	d.dc_mem.mc_alloc = &a_alloc;
@@ -313,13 +318,6 @@ MODULE = BsDiPa PACKAGE = BsDiPa
 VERSIONCHECK: DISABLE
 PROTOTYPES: ENABLE
 
-void
-_try_oneshot_set(nval)
-	SV *nval
-CODE:
-	if(SvIOK(nval))
-		a_try_oneshot = SvIV(nval);
-
 SV *
 VERSION()
 CODE:
@@ -375,6 +373,20 @@ CODE:
 	RETVAL = newSViv(s_BSDIPA_INVAL);
 OUTPUT:
 	RETVAL
+
+void
+core_try_oneshot_set(nval)
+	SV *nval
+CODE:
+	if(SvIOK(nval))
+		a_try_oneshot = SvIV(nval);
+
+void
+core_diff_level_set(nval)
+	SV *nval
+CODE:
+	if(SvIOK(nval))
+		a_level = SvIV(nval);
 
 SV *
 core_diff_raw(before_sv, after_sv, patch_sv, magic_window=NULL, is_equal_data=NULL, io_cookie=NULL)

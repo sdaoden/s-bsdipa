@@ -46,8 +46,10 @@ sub doit{
 	ok(!defined $pz);
 	ok(BsDiPa::core_diff_zlib($b, $a, undef) eq BsDiPa::INVAL);
 	ok(BsDiPa::core_diff_zlib($b, $a, $pz) eq BsDiPa::INVAL);
+	BsDiPa::core_diff_level_set(3);
 	ok(BsDiPa::core_diff_zlib($b, $a, \$pz, undef, undef, $cz) eq BsDiPa::OK);
 	ok(defined $pz);
+	BsDiPa::core_diff_level_set(0);
 	ok(BsDiPa::core_diff_zlib($b, $a, \$pz, undef, $iseq, $cz) eq BsDiPa::INVAL);
 	ok(!defined $pz);
 	ok(BsDiPa::core_diff_zlib($b, $a, \$pz, undef, \$iseq, $cz) eq BsDiPa::OK);
@@ -216,11 +218,11 @@ sub ckit{
 
 ckit();
 $cx = BsDiPa::core_io_cookie_new_xz() if BsDiPa::HAVE_XZ;
-BsDiPa::_try_oneshot_set(0);
+BsDiPa::core_try_oneshot_set(0);
 ckit();
-BsDiPa::_try_oneshot_set(1);
+BsDiPa::core_try_oneshot_set(1);
 ckit();
-BsDiPa::_try_oneshot_set(-1);
+BsDiPa::core_try_oneshot_set(-1);
 for(my $i = 0; $i < 3; ++$i) {ckit()}
 BsDiPa::core_io_cookie_gut($cx) if BsDiPa::HAVE_XZ;
 
