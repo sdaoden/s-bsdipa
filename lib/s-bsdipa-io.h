@@ -89,9 +89,9 @@ extern "C" {
 
 #if s_BSDIPA_IO_H == 0
 /* An optional cookie that may be used by the I/O layer for caching purposes if set.
- * The actual I/O layer has a specific "subclass", plus a s_bsdipa_io_cookie_gut_*() function if cookies are really
- * supported: the subclass must actually be used!
- * It must be zeroed before first use, then .ioc_type be set to s_BSDIPA_IO_(XZ);
+ * The actual I/O layer may have a specific "subclass", plus an optional s_bsdipa_io_cookie_gut_*() function,
+ * in which the subclass must be used, and the gut function be called.
+ * It must be zeroed before first use, then .ioc_type be set to the s_BSDIPA_IO_.. type;
  * setting .ioc_level is optional and may be used by the layer to adjust compression.
  * It may then be passed to read and write functions, from within one thread at a time.
  * Once no more use is to be expected, the according _gut_*() function must be called.
@@ -101,9 +101,9 @@ extern "C" {
  * used) must be the same throughout the lifetime of the I/O cookie! */
 struct s_bsdipa_io_cookie{
 	uint8_t ioc_is_init;
-	uint8_t ioc_type; /* s_BSDIPA_IO_(XZ): actual type */
+	uint8_t ioc_type; /* s_BSDIPA_IO_..: actual type */
 	uint8_t ioc__dummy[2];
-	uint32_t ioc_level; /* some compression level, if supported */
+	uint32_t ioc_level; /* 0 or some compression level, if supported; then value *not* tested */
 };
 
 /* The function to free resources of a io_cookie, if any were ever allocated. */
@@ -308,17 +308,24 @@ s_bsdipa_io_write_zlib(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_pt
 	size_t olen;
 	s_bsdipa_off_t diflen, extlen;
 	z_streamp zsp;
-	(void)io_cookie_or_null;
 
 	zsp = &zs;
 	zs.zalloc = &s__bsdipa_io_zlib_alloc;
 	zs.zfree = &s__bsdipa_io_zlib_free;
 	zs.opaque = (void*)&dcp->dc_mem;
 
-	switch(deflateInit(zsp, s_BSDIPA_IO_ZLIB_LEVEL)){
-	case Z_OK: break;
-	case Z_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jleave;
-	default: rv = s_BSDIPA_INVAL; goto jleave;
+	/* C99 */{
+		int level;
+
+		level = s_BSDIPA_IO_ZLIB_LEVEL;
+		if(io_cookie_or_null != NULL && io_cookie_or_null->ioc_level != 0)
+			level = (int)io_cookie_or_null->ioc_level;
+
+		switch(deflateInit(zsp, level)){
+		case Z_OK: break;
+		case Z_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jleave;
+		default: rv = s_BSDIPA_INVAL; goto jleave;
+		}
 	}
 
 	diflen = dcp->dc_diff_len;
