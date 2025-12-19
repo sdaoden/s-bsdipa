@@ -44,8 +44,75 @@ Repository:
 
 Contact: steffen at sdaoden dot eu.
 
-RELEASES
---------
+1. s-bsdipa example
+2. Releases
+
+1. s-bsdipa example
+-------------------
+
+  $ file .A .B
+  .A: troff or preprocessor input, ASCII text
+  .B: troff or preprocessor input, ASCII text
+
+  $ ll .A .B
+  -rw-r----- 1 steffen steffen 397962 Dec 19 00:34 .A
+  -rw-r----- 1 steffen steffen 428420 Dec 19 00:34 .B
+
+  $ for c in -z -J -j; do
+      for b in 32 64; do
+        echo $b/$c
+        ./s-bsdipa$b $c diff .B .A .P$b$c
+        ./s-bsdipa$b patch .A .P$b$c .R$b$c
+      done
+    done
+  32/-z
+  # 71965 result bytes | 121 allocs: all=2734901 peek=2283441 curr=0
+  # Code 0:078 secs, ZLIB I/O 0:079 secs
+  # data: ctrl=54192 (4516 entries) diff=310890 extra=117530
+  # 428420 result bytes | 4 allocs: all=950961 peek=911033 curr=0
+  # Code 0:001 secs, ZLIB I/O 0:001 secs
+  64/-z
+  # 74426 result bytes | 121 allocs: all=4644533 peek=4138461 curr=0
+  # Code 0:079 secs, ZLIB I/O 0:140 secs
+  # data: ctrl=108384 (4516 entries) diff=310890 extra=117530
+  # 428420 result bytes | 4 allocs: all=1005153 peek=965225 curr=0
+  # Code 0:001 secs, ZLIB I/O 0:001 secs
+  32/-J
+  # 62920 result bytes | 130 allocs: all=51830824 peek=49975804 curr=0
+  # Code 0:077 secs, XZ I/O 0:055 secs
+  # data: ctrl=54192 (4516 entries) diff=310890 extra=117530
+  # 428420 result bytes | 11 allocs: all=5140969 peek=4712436 curr=0
+  # Code 0:001 secs, XZ I/O 0:003 secs
+  64/-J
+  # 64472 result bytes | 130 allocs: all=53740456 peek=50030416 curr=0
+  # Code 0:079 secs, XZ I/O 0:068 secs
+  # data: ctrl=108384 (4516 entries) diff=310890 extra=117530
+  # 428420 result bytes | 11 allocs: all=5195161 peek=4766628 curr=0
+  # Code 0:001 secs, XZ I/O 0:003 secs
+  32/-j
+  # 64711 result bytes | 120 allocs: all=9984857 peek=8129837 curr=0
+  # Code 0:076 secs, BZ2 I/O 0:014 secs
+  # data: ctrl=54192 (4516 entries) diff=310890 extra=117530
+  # 428420 result bytes | 4 allocs: all=4575177 peek=4146756 curr=0
+  # Code 0:001 secs, BZ2 I/O 0:008 secs
+  64/-j
+  # 64335 result bytes | 120 allocs: all=11894489 peek=8184449 curr=0
+  # Code 0:076 secs, BZ2 I/O 0:015 secs
+  # data: ctrl=108384 (4516 entries) diff=310890 extra=117530
+  # 428420 result bytes | 4 allocs: all=4629369 peek=4200948 curr=0
+  # Code 0:001 secs, BZ2 I/O 0:007 secs
+
+2. Releases
+-----------
+
+v0.8.1, 2025-12-20:
+  - Tighten tested constraints on patch content.
+  - Optimize away needless work when applying patch.
+  - Fix beflen!=0 aftlen==0 "algorithm error" in BSDiff resulting in SEGV.
+  - ZLIB I/O: allow compression config via cookie.
+  - perl: make official core_try_oneshot_set(), add core_diff_level_set().
+  - Compile-time-assert BSDIFF_OFF_MAX<=SIZE_MAX>>1.
+  - Add optional BZ2 (BZIP2, libbz2) _IO method support.
 
 v0.8.0, 2025-07-03:
   - ABI and API breakage.
