@@ -252,7 +252,7 @@ s_bsdipa_patch(struct s_bsdipa_patch_ctx *pcp){
 
 	rv = s_BSDIPA_INVAL;
 
-	for(any_tick = 0, aftpos = respos = 0; respos < pcp->pc_header.h_before_len; any_tick = 0){
+	for(any_tick = 0, aftpos = respos = 0; respos < pcp->pc_header.h_before_len; any_tick = 1){
 		s_bsdipa_off_t i, j, k;
 
 		if(pcp->pc_header.h_ctrl_len < (s_bsdipa_off_t)sizeof(s_bsdipa_off_t) * 3)
