@@ -7,6 +7,7 @@
 : ${DP:=../s-bsdipa}
 : ${DP32:=}
 : ${DPXZ:=}
+: ${DPBZ2:=}
 
 : ${DD:=dd}
 : ${MKDIR:=mkdir}
@@ -35,7 +36,6 @@ trap 'exit 1' HUP INT TERM
 (
 cd ./.test || exit 2
 TNO=0
-
 
 y() {
 	[ $1 -eq 0 ] || { echo >&2 'bad '$2': '$1; exit 1; }
@@ -68,6 +68,7 @@ tx() {
 > t1.a
 tx 1 -z
 [ -n "$DPXZ" ] && tx 1 -J
+[ -n "$DPBZ2" ] && tx 1 -j
 tx 1 -R
 
 > t2a.b
@@ -78,9 +79,10 @@ while [ $i -le 100 ]; do
 	[ $i -ne 0 ] && ix=$i
 	echo "$ix" >> t2a.a
 
-	tx 2a -zf '' $i
-	[ -n "$DPXZ" ] && tx 2a -Jf -4 $i
-	tx 2a -Rf '' $i
+	tx 2a -zf -3 $i
+	[ -n "$DPXZ" ] && tx 2a -Jf -3 $i
+	[ -n "$DPBZ2" ] && tx 2a -jf -3 $i
+	tx 2a -Rf '' "$i"
 
 	i=$((i + 1))
 done
@@ -93,8 +95,9 @@ while [ $i -le 100 ]; do
 	[ $i -ne 0 ] && ix=$i
 	echo "$ix" >> t2b.b
 
-	tx 2b -zf '' $i
+	tx 2b -zf -9 $i
 	[ -n "$DPXZ" ] && tx 2b -Jf -4 $i
+	[ -n "$DPBZ2" ] && tx 2b -jf -9 $i
 	tx 2b -Rf '' $i
 
 	i=$((i + 1))
@@ -109,8 +112,9 @@ while [ $i -le 100 ]; do
 	echo "$ix" >> t2c.a
 	echo "$ix" >> t2c.b
 
-	tx 2c -zf '' $i
-	[ -n "$DPXZ" ] && tx 2c -Jf -4 $i
+	tx 2c -zf -1 $i
+	[ -n "$DPXZ" ] && tx 2c -Jf -1 $i
+	[ -n "$DPBZ2" ] && tx 2c -jf -1 $i
 	tx 2c -Rf '' $i
 
 	i=$((i + 1))
@@ -120,18 +124,21 @@ done
 ($SEQ 100; echo 0; $SEQ 100) > t3.a
 tx 3 -z
 [ -n "$DPXZ" ] && tx 3 -J
+[ -n "$DPBZ2" ] && tx 3 -j
 tx 3 -R
 
 ($SEQ 100; echo 0; $SEQ 100) > t4.b
 ($SEQ 100; echo 1; $SEQ 100) > t4.a
 tx 4 -z
 [ -n "$DPXZ" ] && tx 4 -J
+[ -n "$DPBZ2" ] && tx 4 -j
 tx 4 -R
 
 (echo 0; $SEQ 100; echo 1; $SEQ 100; echo 2; $SEQ 100; echo 4; $SEQ 100) > t5.b
 (echo 1; $SEQ 100; echo 2; $SEQ 100; echo 3; $SEQ 100; echo 5) > t5.a
 tx 5 -z
 [ -n "$DPXZ" ] && tx 5 -J
+[ -n "$DPBZ2" ] && tx 5 -j
 tx 5 -R
 
 if [ -f ../../lib/s-bsdiff.o ] && [ -f ../../lib/s-bspatch.o ]; then
@@ -139,6 +146,7 @@ if [ -f ../../lib/s-bsdiff.o ] && [ -f ../../lib/s-bspatch.o ]; then
 	eval $DD if=../../lib/s-bspatch.o of=t6.a $REDIR
 	tx 6 -z
 	[ -n "$DPXZ" ] && tx 6 -J -6
+	[ -n "$DPBZ2" ] && tx 6 -j -6
 	tx 6 -R
 else
 	echo >&2 'SKIP TESTS 6: cannot find my object files'
@@ -149,12 +157,14 @@ if [ -c /dev/urandom ]; then
 	eval $DD if=/dev/urandom bs=768 count=1 of=t7.a $REDIR
 	tx 7 -z
 	[ -n "$DPXZ" ] && tx 7 -J
+	[ -n "$DPBZ2" ] && tx 7 -j
 	tx 7 -R
 
 	eval $DD if=/dev/urandom bs=512 count=10 of=t8.a $REDIR
 	eval $DD if=/dev/urandom bs=768 count=10 of=t8.b $REDIR
-	tx 8 -z
+	tx 8 -z -9
 	[ -n "$DPXZ" ] && tx 8 -J -9
+	[ -n "$DPBZ2" ] && tx 8 -j -9
 	tx 8 -R
 else
 	echo >&2 'SKIP TESTS 7,8: no /dev/urandom'
@@ -170,7 +180,8 @@ while [ $i -lt 7777 ]; do
 	i=$ix
 done
 tx 9 -z
-[ -n "$DPXZ" ] && tx 9 -J -4
+[ -n "$DPXZ" ] && tx 9 -J
+[ -n "$DPBZ2" ] && tx 9 -j
 tx 9 -R
 
 # (try increase ctrl dat)
@@ -185,8 +196,9 @@ while [ $i -le 1000 ]; do
 	echo "$ix" >> t10.b
 
 	if [ -n "$iy" ]; then
-		tx 10 -zf '' $i
-		[ -n "$DPXZ" ] && tx 10 -Jf -4 $i
+		tx 10 -zf -1 $i
+		[ -n "$DPXZ" ] && tx 10 -Jf -1 $i
+		[ -n "$DPBZ2" ] && tx 10 -jf -1 $i
 		tx 10 -Rf '' $i
 	fi
 

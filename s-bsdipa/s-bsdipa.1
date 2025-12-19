@@ -1,7 +1,7 @@
 .\"@ s-bsdipa - create or apply binary difference patch.
 .
-.Dd June 29, 2025
-.ds VV \\%v0.8.0
+.Dd Dec 18, 2025
+.ds VV \\%v0.8.1
 .ds XX \\%S-BSDIPA
 .ds Xx \\%S-bsdipa
 .ds xX \\%s-bsdipa
@@ -32,7 +32,7 @@
 .
 .Pp
 .Nm \*(xX
-.Op Fl fHJR
+.Op Fl fHJjR
 .Ar patch
 .Ar after
 .Ar before
@@ -47,7 +47,7 @@
 .Ar patch
 .
 .Nm \*(xX
-.Op Fl fHJR1-9
+.Op Fl fHJjR1-9
 .Ar diff/WINDOW
 .Ar before
 .Ar after
@@ -94,12 +94,15 @@ Overwrite an existing target file.
 .It Fl H
 Do not read or write file identity header;
 one of
-.Fl J | R | z
+.Fl J | j | R | z
 must be used in addition.
 .It Fl h
 Show usage information and exit.
 .It Fl J
 Use LZMA2 compression.
+This is an optional feature.
+.It Fl j
+Use bzip2 compression.
 This is an optional feature.
 .It Fl R
 Uncompressed patch format without checksum (for testing).

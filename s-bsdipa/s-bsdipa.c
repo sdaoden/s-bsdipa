@@ -59,6 +59,12 @@
 # include "s-bsdipa-io.h"
 #endif
 
+#ifdef s__BSDIPA_BZ2
+# undef s_BSDIPA_IO
+# define s_BSDIPA_IO s_BSDIPA_IO_BZ2
+# include "s-bsdipa-io.h"
+#endif
+
 #ifndef O_BINARY
 # define O_BINARY 0
 #endif
@@ -113,7 +119,8 @@
 struct a_io{
 	s_bsdipa_io_write_fun io_w;
 	s_bsdipa_io_read_fun io_r;
-	char io_n[8];
+	uint8_t io_t;
+	char io_n[7];
 };
 
 #if a_STATS
@@ -125,15 +132,22 @@ struct a_mem{
 #endif
 
 static struct a_io const a_io_meths[] = {
-	[s_BSDIPA_IO_RAW] = {s_bsdipa_io_write_raw, s_bsdipa_io_read_raw, s_BSDIPA_IO_NAME_RAW},
-	[s_BSDIPA_IO_ZLIB] = {s_bsdipa_io_write_zlib, s_bsdipa_io_read_zlib, s_BSDIPA_IO_NAME_ZLIB},
+	[s_BSDIPA_IO_RAW] = {s_bsdipa_io_write_raw, s_bsdipa_io_read_raw, s_BSDIPA_IO_RAW, s_BSDIPA_IO_NAME_RAW},
+	[s_BSDIPA_IO_ZLIB] = {s_bsdipa_io_write_zlib, s_bsdipa_io_read_zlib, s_BSDIPA_IO_ZLIB, s_BSDIPA_IO_NAME_ZLIB},
 	[s_BSDIPA_IO_XZ] = {
 #ifdef s__BSDIPA_XZ
 			s_bsdipa_io_write_xz, s_bsdipa_io_read_xz,
 #else
 			NULL, NULL,
 #endif
-			s_BSDIPA_IO_NAME_XZ},
+			s_BSDIPA_IO_XZ, s_BSDIPA_IO_NAME_XZ},
+	[s_BSDIPA_IO_BZ2] = {
+#ifdef s__BSDIPA_BZ2
+			s_bsdipa_io_write_bz2, s_bsdipa_io_read_bz2,
+#else
+			NULL, NULL,
+#endif
+			s_BSDIPA_IO_BZ2, s_BSDIPA_IO_NAME_BZ2},
 };
 
 #if a_STATS
@@ -315,7 +329,7 @@ main(int argc, char *argv[]){
 	f = a_NONE;
 	iop = NULL;
 
-	while((rv = getopt(argc, argv, "123456789fHhJRz")) != -1)
+	while((rv = getopt(argc, argv, "123456789fHhJjRz")) != -1)
 		switch(rv){
 		case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 			f |= a_IO_COOKIE;
@@ -325,6 +339,7 @@ main(int argc, char *argv[]){
 		case 'H': f |= a_NO_HEADER; break;
 		case 'h': f |= a_NO_ACT; rv = a_EX_OK; goto juse;
 		case 'J': iop = &a_io_meths[s_BSDIPA_IO_XZ]; break;
+		case 'j': iop = &a_io_meths[s_BSDIPA_IO_BZ2]; break;
 		case 'R': iop = &a_io_meths[s_BSDIPA_IO_RAW]; break;
 		case 'z': iop = &a_io_meths[s_BSDIPA_IO_ZLIB]; break;
 		default: goto jeuse;
@@ -344,13 +359,7 @@ main(int argc, char *argv[]){
 		lvl = ioc.c.ioc_level;
 		memset(&ioc, 0, sizeof ioc);
 		ioc.c.ioc_level = lvl;
-
-#ifdef s__BSDIPA_XZ
-		if(iop == &a_io_meths[s_BSDIPA_IO_XZ])
-			ioc.c.ioc_type = s_BSDIPA_IO_XZ;
-		else
-#endif
-			f ^= a_IO_COOKIE;
+		ioc.c.ioc_type = iop->io_t;
 	}
 
 	if(optind >= argc)
@@ -719,9 +728,9 @@ juse:
 	fprintf((rv == a_EX_OK ? stdout : stderr),
 		a_NAME " (" s_BSDIPA_VERSION "): create or apply binary difference patch\n"
 		"\n"
-		"  " a_NAME a_NAME_BITS " [-fHJRz]    patch    after  patch restored\n"
-		"  " a_NAME a_NAME_BITS " [-fHJRz1-9] diff     before after patch\n"
-		"  " a_NAME a_NAME_BITS " [-fHJRz1-9] diff/WIN before after patch\n"
+		"  " a_NAME a_NAME_BITS " [-fHJjRz]    patch    after  patch restored\n"
+		"  " a_NAME a_NAME_BITS " [-fHJjRz1-9] diff     before after patch\n"
+		"  " a_NAME a_NAME_BITS " [-fHJjRz1-9] diff/WIN before after patch\n"
 		"\n"
 		"The first uses \"patch\" to create \"restored\" from \"after\";\n"
 		"if a compression method is given, it must match the detected one.\n"
@@ -735,6 +744,11 @@ juse:
 		"    (\"BSDIPA\" + \"32\" or \"64\" + \"/\" plus I/O type + \"/\")\n"
 		"-J  use LZMA2 compression (XZ utils, liblzma; optional: "
 #ifndef s__BSDIPA_XZ
+			"NOT "
+#endif
+			"available)\n"
+		"-j  use BZIP2 compression (libbz2; optional: "
+#ifndef s__BSDIPA_BZ2
 			"NOT "
 #endif
 			"available)\n"

@@ -29,11 +29,15 @@ S-bsdipa -- create or apply binary difference patch
 	my ($b, $a) = ("\012\013\00\01\02\03\04\05\06\07" x 3,
 			"\010\011\012\013\014" x 4);
 
-	my $pz, $px, $pr, $iseq;
+	my $pz, $px, $pb, $pr, $iseq;
 	die if BsDiPa::core_diff_zlib($b, $a, \$pz, undef, \$iseq) ne BsDiPa::OK;
 	die unless(!$iseq);
 	if(BsDiPa::HAVE_XZ){
 		die if BsDiPa::core_diff_xz($b, $a, \$px, undef, \$iseq) ne BsDiPa::OK;
+		die unless(!$iseq)
+	}
+	if(BsDiPa::HAVE_BZ2){
+		die if BsDiPa::core_diff_bz2($b, $a, \$pb, undef, \$iseq) ne BsDiPa::OK;
 		die unless(!$iseq)
 	}
 	die if BsDiPa::core_diff_raw($b, $a, \$pr) ne BsDiPa::OK;
@@ -41,15 +45,19 @@ S-bsdipa -- create or apply binary difference patch
 		my $x = uncompress($pz);
 		die unless(($pr cmp $x) == 0);
 
-	my $rz, $rx, $rr;
+	my $rz, $rx, $rb, $rr;
 	die if BsDiPa::core_patch_zlib($a, $pz, \$rz) ne BsDiPa::OK;
 	if(BsDiPa::HAVE_XZ){
 		die if BsDiPa::core_patch_xz($a, $px, \$rx) ne BsDiPa::OK
+	}
+	if(BsDiPa::HAVE_BZ2){
+		die if BsDiPa::core_patch_bz2($a, $pb, \$rb) ne BsDiPa::OK
 	}
 	die if BsDiPa::core_patch_raw($a, $pr, \$rr) ne BsDiPa::OK;
 	die unless(($rr cmp $b) == 0);
 	die unless(($rz cmp $rr) == 0);
 	die unless(!BsDiPa::HAVE_XZ || ($rx cmp $rr) == 0);
+	die unless(!BsDiPa::HAVE_BZ2 || ($rb cmp $rb) == 0);
 
 =head1 DESCRIPTION
 
@@ -78,6 +86,11 @@ A multiline string containing a copyright license summary.
 =item C<HAVE_XZ> (number / boolean)
 
 Returns 1 if support for liblzma (XZ) is available, 0 otherwise.
+This is a compile time detection feature.
+
+=item C<HAVE_BZ2> (number / boolean)
+
+Returns 1 if support for libbz2 (BZIP2) is available, 0 otherwise.
 This is a compile time detection feature.
 
 =item C<OK> (number)
@@ -130,6 +143,11 @@ See below for C<$io_cookie>.
 Exactly like C<core_diff_zlib()>, but with XZ (lzma) compression scheme.
 Only available if C<HAVE_XZ> is true.
 
+=item C<core_diff_bz2($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0, $io_cookie=0)>
+
+Exactly like C<core_diff_zlib()>, but with BZIP2 compression scheme.
+Only available if C<HAVE_BZ2> is true.
+
 =item C<core_diff_raw($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0, $io_cookie=0)>
 
 Exactly like C<core_diff_zlib()>, but without compression.
@@ -151,6 +169,11 @@ See below for C<$io_cookie>.
 
 Exactly like C<core_patch_zlib()>, but expects a XZ (lzma) compressed patch.
 Only available if C<HAVE_XZ> is true.
+
+=item C<core_patch_bz2($after_sv, $patch_sv, $before_sv, $max_allowed_restored_len=0, $io_cookie=0)>
+
+Exactly like C<core_patch_zlib()>, but expects a BZIP2 compressed patch.
+Only available if C<HAVE_BZ2> is true.
 
 =item C<core_patch_raw($after_sv, $patch_sv, $before_sv, $max_allowed_restored_len=0, $io_cookie=0)>
 

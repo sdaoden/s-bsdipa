@@ -38,7 +38,7 @@ sub doit{
 	$eq = (defined $eq && $eq != 0);
 	my $iseq = 0;
 
-	my ($pz,$px,$pr, $rz,$rx,$rr) = (0,0,0, 0,0,0);
+	my ($pz,$px,$pb,$pr, $rz,$rx,$rb,$rr) = (0,0,0,0, 0,0,0,0);
 
 	ok(BsDiPa::core_diff_zlib(undef, $a, \$pz) eq BsDiPa::INVAL);
 	ok(!defined $pz);
@@ -69,6 +69,24 @@ sub doit{
 		ok(!defined $px);
 		ok(BsDiPa::core_diff_xz($b, $a, \$px, undef, \$iseq, $cx) eq BsDiPa::OK);
 		ok(defined $px);
+		ok($eq == $iseq);
+	}
+
+	if(BsDiPa::HAVE_BZ2()){
+		ok(BsDiPa::core_diff_bz2(undef, $a, \$pb) eq BsDiPa::INVAL);
+		ok(!defined $pb);
+		ok(BsDiPa::core_diff_bz2($b, undef, \$pb) eq BsDiPa::INVAL);
+		ok(!defined $pb);
+		ok(BsDiPa::core_diff_bz2($b, $a, undef) eq BsDiPa::INVAL);
+		ok(BsDiPa::core_diff_bz2($b, $a, $pb) eq BsDiPa::INVAL);
+		BsDiPa::core_diff_level_set(3);
+		ok(BsDiPa::core_diff_bz2($b, $a, \$pb, undef, undef, $cx) eq BsDiPa::OK);
+		ok(defined $pb);
+		BsDiPa::core_diff_level_set(0);
+		ok(BsDiPa::core_diff_bz2($b, $a, \$pb, undef, $iseq, $cx) eq BsDiPa::INVAL);
+		ok(!defined $pb);
+		ok(BsDiPa::core_diff_bz2($b, $a, \$pb, undef, \$iseq, $cx) eq BsDiPa::OK);
+		ok(defined $pb);
 		ok($eq == $iseq);
 	}
 
@@ -114,6 +132,20 @@ sub doit{
 		ok(($rz cmp $rx) == 0);
 	}
 
+	if(BsDiPa::HAVE_BZ2){
+		ok(BsDiPa::core_patch_bz2(undef, $pb, \$rb) eq BsDiPa::INVAL);
+		ok(!defined $rb);
+		ok(BsDiPa::core_patch_bz2($a, undef, \$rb) eq BsDiPa::INVAL);
+		ok(!defined $rb);
+		ok(BsDiPa::core_patch_bz2($a, $pb, undef) eq BsDiPa::INVAL);
+		ok(BsDiPa::core_patch_bz2($a, $pb, $rb, undef, $cx) eq BsDiPa::INVAL);
+		ok(BsDiPa::core_patch_bz2($a, $pb, \$rb, undef, $cx) eq BsDiPa::OK);
+		ok(defined $rb);
+		ok(($rb cmp $b) == 0);
+
+		ok(($rz cmp $rb) == 0);
+	}
+
 	ok(BsDiPa::core_patch_raw(undef, $pr, \$rr) eq BsDiPa::INVAL);
 	ok(!defined $rr);
 	ok(BsDiPa::core_patch_raw($a, undef, \$rr) eq BsDiPa::INVAL);
@@ -147,6 +179,18 @@ sub doit{
 		ok(!defined $rx);
 		ok(BsDiPa::core_patch_xz($a, $px, \$rx, -44) eq BsDiPa::INVAL);
 		ok(!defined $rx);
+	}
+
+	if(BsDiPa::HAVE_BZ2){
+		ok(BsDiPa::core_patch_bz2($a, $pb, \$rb, length($rb), $cx) eq BsDiPa::OK);
+		ok(defined $rb);
+		ok(($rb cmp $b) == 0);
+		ok(BsDiPa::core_patch_bz2($a, $pb, \$rb, length($rb) - 1) eq BsDiPa::FBIG);
+		ok(!defined $rb);
+		ok(BsDiPa::core_patch_bz2($a, $pb, \$rb, "no") eq BsDiPa::INVAL);
+		ok(!defined $rb);
+		ok(BsDiPa::core_patch_bz2($a, $pb, \$rb, -44) eq BsDiPa::INVAL);
+		ok(!defined $rb);
 	}
 
 	ok(BsDiPa::core_patch_raw($a, $pr, \$rr, length($rr), $cr) eq BsDiPa::OK);

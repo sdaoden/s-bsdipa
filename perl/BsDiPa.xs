@@ -39,6 +39,12 @@
 # include "c-lib/s-bsdipa-io.h"
 #endif
 /**/
+#if s__BSDIPA_BZ2
+# undef s_BSDIPA_IO
+# define s_BSDIPA_IO s_BSDIPA_IO_BZ2
+# include "c-lib/s-bsdipa-io.h"
+#endif
+/**/
 #undef s_BSDIPA_IO
 #define s_BSDIPA_IO s_BSDIPA_IO_RAW
 #include "c-lib/s-bsdipa-io.h"
@@ -65,6 +71,7 @@ union a_io_cookie{
 static IV a_try_oneshot = -1;
 static IV a_level = 0;
 static IV const a_have_xz = s__BSDIPA_XZ;
+static IV const a_have_bz2 = s__BSDIPA_BZ2;
 
 static void *a_alloc(size_t size);
 static void a_free(void *vp);
@@ -161,6 +168,10 @@ a_core_diff(int what, SV *before_sv, SV *after_sv, SV *patch_sv, SV *magic_windo
 #if s__BSDIPA_XZ
 	else if(what == s_BSDIPA_IO_XZ)
 		s = s_bsdipa_io_write_xz(&d, &a_core_diff__write, pref, a_try_oneshot, iocp);
+#endif
+#if s__BSDIPA_BZ2
+	else if(what == s_BSDIPA_IO_BZ2)
+		s = s_bsdipa_io_write_bz2(&d, &a_core_diff__write, pref, a_try_oneshot, iocp);
 #endif
 	else /*if(what == s_BSDIPA_IO_RAW)*/{
 		s_bsdipa_off_t x;
@@ -282,6 +293,10 @@ a_core_patch(int what, SV *after_sv, SV *patch_sv, SV *before_sv, SV *max_allowe
 	else if(what == s_BSDIPA_IO_XZ)
 		s = s_bsdipa_io_read_xz(&p, iocp);
 #endif
+#if s__BSDIPA_BZ2
+	else if(what == s_BSDIPA_IO_BZ2)
+		s = s_bsdipa_io_read_bz2(&p, iocp);
+#endif
 	else /*if(what == s_BSDIPA_IO_RAW)*/
 		s = s_bsdipa_io_read_raw(&p, iocp);
 	if(s != s_BSDIPA_OK)
@@ -343,6 +358,13 @@ SV *
 HAVE_XZ()
 CODE:
 	RETVAL = newSViv(a_have_xz);
+OUTPUT:
+	RETVAL
+
+SV *
+HAVE_BZ2()
+CODE:
+	RETVAL = newSViv(a_have_bz2);
 OUTPUT:
 	RETVAL
 
@@ -429,6 +451,21 @@ OUTPUT:
 	RETVAL
 #endif
 
+#if s__BSDIPA_BZ2
+SV *
+core_diff_bz2(before_sv, after_sv, patch_sv, magic_window=NULL, is_equal_data=NULL, io_cookie=NULL)
+	SV *before_sv
+	SV *after_sv
+	SV *patch_sv
+	SV *magic_window
+	SV *is_equal_data
+	SV *io_cookie
+CODE:
+	RETVAL = a_core_diff(s_BSDIPA_IO_BZ2, before_sv, after_sv, patch_sv, magic_window, is_equal_data, io_cookie);
+OUTPUT:
+	RETVAL
+#endif
+
 SV *
 core_patch_raw(after_sv, patch_sv, before_sv, max_allowed_restored_len=NULL, io_cookie=NULL)
 	SV *after_sv
@@ -463,6 +500,20 @@ core_patch_xz(after_sv, patch_sv, before_sv, max_allowed_restored_len=NULL, io_c
 	SV *io_cookie
 CODE:
 	RETVAL = a_core_patch(s_BSDIPA_IO_XZ, after_sv, patch_sv, before_sv, max_allowed_restored_len, io_cookie);
+OUTPUT:
+	RETVAL
+#endif
+
+#if s__BSDIPA_BZ2
+SV *
+core_patch_bz2(after_sv, patch_sv, before_sv, max_allowed_restored_len=NULL, io_cookie=NULL)
+	SV *after_sv
+	SV *patch_sv
+	SV *before_sv
+	SV *max_allowed_restored_len
+	SV *io_cookie
+CODE:
+	RETVAL = a_core_patch(s_BSDIPA_IO_BZ2, after_sv, patch_sv, before_sv, max_allowed_restored_len, io_cookie);
 OUTPUT:
 	RETVAL
 #endif

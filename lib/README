@@ -28,7 +28,8 @@ create or apply binary difference patch.  In general:
   It times execution and tracks memory usage on stderr.
 
 - the directory perl contains the self-contained BsDiPa CPAN module.
-  (Perl ships with ZLIB, liblzma/XZ support is compile-time detected.)
+  (Perl ships with ZLIB, liblzma/XZ and libz2/BZ2 support is
+  compile-time detected.)
 
 Licenses (full text included in s-bsdipa-lib.h):
   libdivsufsort(/LICENSE): MIT
