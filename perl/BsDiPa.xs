@@ -52,14 +52,6 @@
 #include <c-lib/s-bsdiff.c>
 #include <c-lib/s-bspatch.c>
 
-#include <c-lib/libdivsufsort/divsufsort.c>
-#undef lg_table
-#define lg_table a_sssort_lg_table
-#include <c-lib/libdivsufsort/sssort.c>
-#undef lg_table
-#define lg_table a_trsort_lg_table
-#include <c-lib/libdivsufsort/trsort.c>
-
 union a_io_cookie{
 	void *ioc_vp;
 	struct s_bsdipa_io_cookie *ioc_iocp;

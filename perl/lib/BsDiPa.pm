@@ -64,7 +64,8 @@ S-bsdipa -- create or apply binary difference patch
 Colin Percival's BSDiff, imported from FreeBSD and transformed into
 a library; please see header comment of lib/s-bsdipa-lib.h for more:
 create or apply binary difference patch.
-The perl package only uses C<s_BSDIPA_32> mode (31-bit size limits).
+The perl package only uses C<s_BSDIPA_32> mode (31-bit size limits),
+and always uses the (integrated) libdivsufsort optimization.
 
 =head1 INTERFACE
 

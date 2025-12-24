@@ -2,7 +2,7 @@
  *@ BSDiff: create or apply binary difference patch.
  *@
  *@ Remarks:
- *@ - if s_BSDIPA_32 is configured, 31-bit instead of 63-bit limits.
+ *@ - if s_BSDIPA_32 is defined, 31-bit instead of 63-bit limits.
  *@ - Note: the real limit is maximally SIZE_MAX/sizeof(s_bsdipa_off_t)
  *@   (with 32-bit size_t this can be restrictive)!
  *@   Note s_BSDIPA_OFF_MAX must be <= SIZE_MAX>>1; several such conditions
@@ -126,7 +126,9 @@
 #ifndef s_BSDIPA_LIB_H
 #define s_BSDIPA_LIB_H
 
-#include <s-bsdipa-config.h> /* s_BSDIPA_{VERSION,CONTACT,32,MAGIC_WINDOW} */
+/* s_BSDIPA_{VERSION,CONTACT, 32,MAGIC_WINDOW,SMALL}.
+ * The latter three must be tested via defined(). */
+#include <s-bsdipa-config.h>
 
 #include <sys/types.h>
 

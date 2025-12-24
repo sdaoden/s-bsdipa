@@ -35,26 +35,32 @@
 #include <assert.h>
 #include <string.h>
 
-#include "divsufsort.h"
+#ifndef s_BSDIPA_SMALL
+# define DIVSUFSORT_API static
+# include "divsufsort.h"
+#endif
 
 /* Number of control block instances per s_bsdipa_ctrl_chunk */
 #define a_BSDIPA_CTRL_NO 41
 
-/* */
-#ifndef MIN
-# define MIN(x,y) (((x) < (y)) ? (x) : (y))
+/* What seems a good default */
+#ifndef s_BSDIPA_MAGIC_WINDOW
+# define s_BSDIPA_MAGIC_WINDOW 16
 #endif
+
+#ifdef s_BSDIPA_SMALL
+# define saidx_t s_bsdipa_off_t
+#endif
+
+/* */
+#undef MIN
+#define MIN(x,y) (((x) < (y)) ? (x) : (y))
 
 /* With 32-bit off_t for now only s_BSDIPA_32 mode is supported */
 #ifndef s_BSDIPA_32
 # define OFF_MAX (sizeof(off_t) == 4 ? INT32_MAX : INT64_MAX)
 typedef char ASSERTION_failed__off_max[OFF_MAX != INT32_MAX ? 1 : -1];
 # undef OFF_MAX
-#endif
-
-/* What seems a good default */
-#ifndef s_BSDIPA_MAGIC_WINDOW
-# define s_BSDIPA_MAGIC_WINDOW 16
 #endif
 
 /* Checks use saidx_t, but the patch code uses s_bsdipa_off_t, so these must be of EQ size! */
@@ -73,6 +79,15 @@ static s_bsdipa_off_t a_bsdiff_search(s_bsdipa_off_t const *Ip, uint8_t const *a
 		uint8_t const *befdat, s_bsdipa_off_t beflenp,
 		s_bsdipa_off_t st, s_bsdipa_off_t en, s_bsdipa_off_t *posp);
 static inline void a_bsdiff_xout(s_bsdipa_off_t x, uint8_t *bp);
+
+/* Later imported original BSDiff suffix sort by Colin Percival; at EOF.
+ * (It was replaced with libdivsufsort in the FreeBSD codebase to which he pointed me due to "existing fixes",
+ * because of performance improvements: 10-15 percent for large binaries (megabytes); for smaller files his is better.)
+ * Except for types and names i did not adapt syntax to my style for those. */
+static void a_bsdiff_split(s_bsdipa_off_t *I, s_bsdipa_off_t *V, s_bsdipa_off_t start, s_bsdipa_off_t len,
+		s_bsdipa_off_t h);
+static int a_bsdiff_qsufsort(s_bsdipa_off_t *I, uint8_t const *aftdat, s_bsdipa_off_t aftlen,
+		struct s_bsdipa_diff_ctx *dcp);
 
 static void *
 a_bsdiff_alloc(void *vp, size_t size){
@@ -213,10 +228,6 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 	if(Ip == NULL)
 		goto jleave;
 
-	/* Effectively only ENOMEM possible; (divsufsort() exits quick on aftlen==0, but condome it) */
-	if(aftlen != 0 && divsufsort(aftdat, Ip, aftlen, dcp))
-		goto jdone;
-
 	/* Compute the differences, writing ctrl as we go */
 	if(aftlen == 0 && beflen == 0)
 		dcp->dc_is_equal_data = 1;
@@ -224,7 +235,22 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 		s_bsdipa_off_t ctrl_len_max, scan, len, pos, lastscan, lastpos, lastoff, super_pos, aftscore, i;
 		uint32_t ctrlno;
 		struct s_bsdipa_ctrl_chunk **ccpp, *ccp;
-		int isneq, need_dump;
+		int maxoffdecr, isneq, need_dump;
+
+		maxoffdecr = 0;
+		if(aftlen != 0 && beflen != 0){
+#ifndef s_BSDIPA_SMALL
+			/* Limit is "a bit arbitrary", and surely also depends on memory cache performance etc */
+			if(aftlen > 4096l * 25){
+				/* divsufsort(): effectively only ENOMEM */
+				if(divsufsort(aftdat, Ip, aftlen, dcp))
+					goto jdone;
+				maxoffdecr = 1;
+			}else
+#endif
+				if(a_bsdiff_qsufsort(Ip, aftdat, aftlen, dcp))
+					goto jdone;
+		}
 
 		isneq = (aftlen != beflen);
 		need_dump = 0;
@@ -234,7 +260,7 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 		ctrl_len_max = s_BSDIPA_OFF_MAX - beflen - (sizeof(s_bsdipa_off_t) * 3) - 1;
 		scan = len = pos = lastscan = lastpos = lastoff = super_pos = 0;
 
-		/* a_bsdiff_search() is called with aftlen-1, so bypass algorithm as such, then */
+		/* a_bsdiff_search() is called with aftlen-a_BSDIPA_DIVSUFSORT, so bypass algorithm as such, then */
 		if(aftlen == 0)
 			goto Jaftlen0_bypass;
 
@@ -242,8 +268,8 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 			aftscore = 0;
 
 			for(i = (scan += len); scan < beflen; ++scan){
-				len = a_bsdiff_search(Ip, aftdat, aftlen, befdat + scan, beflen - scan, 0, aftlen - 1,
-						&pos);
+				len = a_bsdiff_search(Ip, aftdat, aftlen, befdat + scan, beflen - scan, 0,
+						aftlen - maxoffdecr, &pos);
 
 				for(; i < scan + len; ++i)
 					if(i + lastoff < aftlen && aftdat[i + lastoff] == befdat[i])
@@ -413,5 +439,128 @@ s_bsdipa_diff_free(struct s_bsdipa_diff_ctx *dcp){
 	if(dcp->dc_extra_dat != NULL)
 		(*dcp->dc_mem.mc_custom_free)(dcp->dc_mem.mc_custom_cookie, dcp->dc_extra_dat);
 }
+
+/*
+ * The algorithm(s) {{{
+ */
+
+static void
+a_bsdiff_split(s_bsdipa_off_t *I, s_bsdipa_off_t *V, s_bsdipa_off_t start, s_bsdipa_off_t len, s_bsdipa_off_t h){
+	s_bsdipa_off_t i,j,k,x,tmp,jj,kk;
+
+	if(len<16) {
+		for(k=start;k<start+len;k+=j) {
+			j=1;x=V[I[k]+h];
+			for(i=1;k+i<start+len;i++) {
+				if(V[I[k+i]+h]<x) {
+					x=V[I[k+i]+h];
+					j=0;
+				};
+				if(V[I[k+i]+h]==x) {
+					tmp=I[k+j];I[k+j]=I[k+i];I[k+i]=tmp;
+					j++;
+				};
+			};
+			for(i=0;i<j;i++) V[I[k+i]]=k+j-1;
+			if(j==1) I[k]=-1;
+		};
+		return;
+	};
+
+	x=V[I[start+len/2]+h];
+	jj=0;kk=0;
+	for(i=start;i<start+len;i++) {
+		if(V[I[i]+h]<x) jj++;
+		if(V[I[i]+h]==x) kk++;
+	};
+	jj+=start;kk+=jj;
+
+	i=start;j=0;k=0;
+	while(i<jj) {
+		if(V[I[i]+h]<x) {
+			i++;
+		} else if(V[I[i]+h]==x) {
+			tmp=I[i];I[i]=I[jj+j];I[jj+j]=tmp;
+			j++;
+		} else {
+			tmp=I[i];I[i]=I[kk+k];I[kk+k]=tmp;
+			k++;
+		};
+	};
+
+	while(jj+j<kk) {
+		if(V[I[jj+j]+h]==x) {
+			j++;
+		} else {
+			tmp=I[jj+j];I[jj+j]=I[kk+k];I[kk+k]=tmp;
+			k++;
+		};
+	};
+
+	if(jj>start) a_bsdiff_split(I,V,start,jj-start,h);
+
+	for(i=0;i<kk-jj;i++) V[I[jj+i]]=kk-1;
+	if(jj==kk-1) I[jj]=-1;
+
+	if(start+len>kk) a_bsdiff_split(I,V,kk,start+len-kk,h);
+}
+
+static int
+a_bsdiff_qsufsort(s_bsdipa_off_t *I,const uint8_t *aftdat,s_bsdipa_off_t aftlen,struct s_bsdipa_diff_ctx *dcp){
+	s_bsdipa_off_t *V;
+	s_bsdipa_off_t buckets[256];
+	s_bsdipa_off_t i,h,len;
+
+	V = (s_bsdipa_off_t*)(*dcp->dc_mem.mc_custom_alloc)(dcp->dc_mem.mc_custom_cookie,
+			(size_t)(aftlen + 1) * sizeof(saidx_t));
+	if(V == NULL)
+		return 1;
+
+	memset(buckets, 0, sizeof(buckets)); /*for(i=0;i<256;i++) buckets[i]=0;*/
+	for(i=0;i<aftlen;i++) buckets[aftdat[i]]++;
+	for(i=1;i<256;i++) buckets[i]+=buckets[i-1];
+	for(i=255;i>0;i--) buckets[i]=buckets[i-1];
+	buckets[0]=0;
+
+	for(i=0;i<aftlen;i++) I[++buckets[aftdat[i]]]=i;
+	I[0]=aftlen;
+	for(i=0;i<aftlen;i++) V[i]=buckets[aftdat[i]];
+	V[aftlen]=0;
+	for(i=1;i<256;i++) if(buckets[i]==buckets[i-1]+1) I[buckets[i]]=-1;
+	I[0]=-1;
+
+	for(h=1;I[0]!=-(aftlen+1);h+=h) {
+		len=0;
+		for(i=0;i<aftlen+1;) {
+			if(I[i]<0) {
+				len-=I[i];
+				i-=I[i];
+			} else {
+				if(len) I[i-len]=-len;
+				len=V[I[i]]+1-i;
+				a_bsdiff_split(I,V,i,len,h);
+				i+=len;
+				len=0;
+			};
+		};
+		if(len) I[i-len]=-len;
+	};
+
+	for(i=0;i<aftlen+1;i++) I[V[i]]=i;
+
+	(*dcp->dc_mem.mc_custom_free)(dcp->dc_mem.mc_custom_cookie, V);
+	return 0;
+}
+
+#ifndef s_BSDIPA_SMALL
+# include "libdivsufsort/divsufsort.c"
+# undef lg_table
+# define lg_table a_sssort_lg_table
+# include "libdivsufsort/sssort.c"
+# undef lg_table
+# define lg_table a_trsort_lg_table
+# include "libdivsufsort/trsort.c"
+#endif
+/* }}} */
 
 /* s-itt-mode */
