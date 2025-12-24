@@ -1,16 +1,16 @@
 /*@ s-bsdipa-io: I/O (compression) layer for s-bsdipa-lib.
  *@ Use as follows:
- *@ - Define s_BSDIPA_IO to one of s_BSDIPA_IO_(RAW|ZLIB|XZ|BZ2),
- *@ - Define s_BSDIPA_IO_READ and/or s_BSDIPA_IO_WRITE, as desired,
- *@ - and include this header.
+ *@ - Define s_BSDIPA_IO to one of s_BSDIPA_IO_(RAW|ZLIB|XZ|BZ2);
+ *@ - Define s_BSDIPA_IO_READ and/or s_BSDIPA_IO_WRITE, as desired;
+ *@ - And include this header.
  *@ It then provides the according s_BSDIPA_IO_NAME preprocessor literal
  *@ and s_bsdipa_io_{read,write}_..(), which (are) fe(e)d data to/from hooks.
  *@
  *@ Notes:
- *@ - the functions have s_BSDIPA_IO_LINKAGE storage, or static if not defined.
+ *@ - The functions have s_BSDIPA_IO_LINKAGE storage, or static if not defined.
  *@   There may be additional static helper functions.
- *@ - it is up to the user to provide according linker flags, like -lz!
- *@ - this is not a step-by-step filter: a complete s_bsdipa_diff() result
+ *@ - It is up to the user to provide according linker flags, like -lz!
+ *@ - This is not a step-by-step filter: a complete s_bsdipa_diff() result
  *@   is serialized, or serialized data is turned into a complete data set
  *@   that then can be fed into s_bsdipa_patch().
  *@   (A custom I/O (compression) layer may be less memory hungry.)
@@ -19,7 +19,8 @@
  *@ - s_BSDIPA_IO == s_BSDIPA_IO_ZLIB (-lz):
  *@   -- s_BSDIPA_IO_ZLIB_LEVEL may be defined as the "level" argument of
  *@      zlib's deflateInit() (default is 9).
- *@   -- checksum Adler-32 (what inflate() gives you).
+ *@   -- Checksum Adler-32 (what inflate() gives you).
+ *@   -- Note: UINT_MAX is maximum allocation size! (XXX could "split" via n/size)
  *@ - s_BSDIPA_IO == s_BSDIPA_IO_XZ (-llzma):
  *@   -- s_BSDIPA_IO_XZ_PRESET may be defined as the "preset" argument of
  *@      lzma_easy_encoder() (default is 4).
@@ -30,12 +31,13 @@
  *@   -- s_BSDIPA_IO_BZ2_BLOCKSIZE may be defined (default 9).
  *@   -- s_BSDIPA_IO_BZ2_VERBOSITY may be defined (default 0).
  *@   -- s_BSDIPA_IO_BZ2_SMALL may be defined (default 0).
- *@ - the header may be included multiple times, shall multiple BSDIPA_IO
+ *@   -- Note: INT_MAX is maximum allocation size! (XXX could "split" via n/size)
+ *@ - The header may be included multiple times, shall multiple BSDIPA_IO
  *@   variants be desired.  Still, only the _IO_LINKAGE as well as _IO_READ
  *@   and _IO_WRITE of the first inclusion are valid.
  *@
  *@ Remarks:
- *@ - code requires ISO STD C99 (for now).
+ *@ - Code requires ISO STD C99.
  *
  * Copyright (c) 2024 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -106,8 +108,8 @@ extern "C" {
  * Once no more use is to be expected, the according _gut_*() function must be called.
  *
  * Note: during all the life time the memory allocator must not change!
- * If the cookie is used for s_bsdipa_diff() as well as s_bsdipa_patch(), then the memory allocator and its cookie (if
- * used) must be the same throughout the lifetime of the I/O cookie! */
+ * If the cookie is used for s_bsdipa_diff() as well as s_bsdipa_patch(), then the memory allocator and its cookie
+ * (if used) must be the same throughout the lifetime of the I/O cookie! */
 struct s_bsdipa_io_cookie{
 	uint8_t ioc_is_init;
 	uint8_t ioc_type; /* s_BSDIPA_IO_..: actual type */
