@@ -221,17 +221,18 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 	if(aftlen == 0 && beflen == 0)
 		dcp->dc_is_equal_data = 1;
 	else{
-		s_bsdipa_off_t ctrl_len_max, scan, len, pos, lastscan, lastpos, lastoff, aftscore, i;
+		s_bsdipa_off_t ctrl_len_max, scan, len, pos, lastscan, lastpos, lastoff, super_pos, aftscore, i;
 		uint32_t ctrlno;
 		struct s_bsdipa_ctrl_chunk **ccpp, *ccp;
-		int isneq;
+		int isneq, need_dump;
 
 		isneq = (aftlen != beflen);
+		need_dump = 0;
 		ccpp = NULL;
 		ccp = NULL; /* xxx UNINIT() */
 		ctrlno = 0; /* xxx UNINIT() */
 		ctrl_len_max = s_BSDIPA_OFF_MAX - beflen - (sizeof(s_bsdipa_off_t) * 3) - 1;
-		scan = len = pos = lastscan = lastpos = lastoff = 0;
+		scan = len = pos = lastscan = lastpos = lastoff = super_pos = 0;
 
 		/* a_bsdiff_search() is called with aftlen-1, so bypass algorithm as such, then */
 		if(aftlen == 0)
@@ -334,37 +335,51 @@ j_aftlen0_bypass:
 				dcp->dc_extra_len += j;
 				assert(extrap <= diffp);
 
-				/* */
-				if(ccpp == NULL || --ctrlno == 0){
-					/* xxx Do not use: sizeof(struct s_bsdipa_ctrl_triple) * a_BSDIPA_CTRL_NO */
-					ccp = (struct s_bsdipa_ctrl_chunk*)(*dcp->dc_mem.mc_custom_alloc)
-							(dcp->dc_mem.mc_custom_cookie,
-							 (sizeof(struct s_bsdipa_ctrl_chunk) +
-								(3 * sizeof(s_bsdipa_off_t) * a_BSDIPA_CTRL_NO)));
-					if(ccp == NULL)
-						goto jdone;
-					if(ccpp == NULL)
-						dcp->dc_ctrl = ccp;
-					else
-						*ccpp = ccp;
-					ccp->cc_next = NULL;
-					ccpp = &ccp->cc_next;
-					ccp->cc_len = 0;
-					ctrlno = a_BSDIPA_CTRL_NO;
+				/* Since v0.9.0 we only create control chunks with data (but the first) */
+				if(lenf != 0 || j != 0){
+					if(need_dump){
+						a_bsdiff_xout(super_pos, &ccp->cc_dat[ccp->cc_len]);
+						ccp->cc_len += sizeof(s_bsdipa_off_t);
+						super_pos = 0;
+					}
+
+					if(ccpp == NULL || --ctrlno == 0){
+						/* xxx Do not: sizeof(struct s_bsdipa_ctrl_triple) * a_BSDIPA_CTRL_NO */
+						ccp = (struct s_bsdipa_ctrl_chunk*)(*dcp->dc_mem.mc_custom_alloc)
+								(dcp->dc_mem.mc_custom_cookie,
+								 (sizeof(struct s_bsdipa_ctrl_chunk) +
+									(3 * sizeof(s_bsdipa_off_t) * a_BSDIPA_CTRL_NO)));
+						if(ccp == NULL)
+							goto jdone;
+						if(ccpp == NULL)
+							dcp->dc_ctrl = ccp;
+						else
+							*ccpp = ccp;
+						ccp->cc_next = NULL;
+						ccpp = &ccp->cc_next;
+						ccp->cc_len = 0;
+						ctrlno = a_BSDIPA_CTRL_NO;
+					}
+
+					a_bsdiff_xout(lenf, &ccp->cc_dat[ccp->cc_len]);
+						ccp->cc_len += sizeof(s_bsdipa_off_t);
+					a_bsdiff_xout(j, &ccp->cc_dat[ccp->cc_len]);
+						ccp->cc_len += sizeof(s_bsdipa_off_t);
+					need_dump = 1;
+					dcp->dc_ctrl_len += sizeof(s_bsdipa_off_t) * 3;
 				}
 
-				a_bsdiff_xout(lenf, &ccp->cc_dat[ccp->cc_len]);
-					ccp->cc_len += sizeof(s_bsdipa_off_t);
-				a_bsdiff_xout(j, &ccp->cc_dat[ccp->cc_len]);
-					ccp->cc_len += sizeof(s_bsdipa_off_t);
-				a_bsdiff_xout((pos - lenb) - (lastpos + lenf), &ccp->cc_dat[ccp->cc_len]);
-					ccp->cc_len += sizeof(s_bsdipa_off_t);
-				dcp->dc_ctrl_len += sizeof(s_bsdipa_off_t) * 3;
-
+				super_pos += (pos - lenb) - (lastpos + lenf);
 				lastscan = scan - lenb;
 				lastpos = pos - lenb;
 				lastoff = pos - scan;
 			}
+		}
+
+		if(need_dump){
+			a_bsdiff_xout(0, &ccp->cc_dat[ccp->cc_len]);
+				ccp->cc_len += sizeof(s_bsdipa_off_t);
+			/*need_dump = 0;*/
 		}
 
 		dcp->dc_is_equal_data = !isneq;

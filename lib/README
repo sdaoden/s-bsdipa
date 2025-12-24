@@ -106,12 +106,18 @@ Contact: steffen at sdaoden dot eu.
 -----------
 
 v0.8.1, 2025-12-20:
+  + Notes:
+    Not released, bsdipa_patch() includes a patch content constraint
+    test that is not satisfied before v0.9.0!
+  + Warning:
+    Miscompilations (of libdivsufsort) with gcc 15.2.0 and -O3 and above!
+    As well as in sanitizer compilations.
+    (clang 21.1.6 ok.)  (All on Linux.)
   - Tighten tested constraints on patch content.
   - Optimize away needless work when applying patch.
   - Fix beflen!=0 aftlen==0 "algorithm error" in BSDiff resulting in SEGV.
   - ZLIB I/O: allow compression config via cookie.
   - perl: make official core_try_oneshot_set(), add core_diff_level_set().
-  - Compile-time-assert BSDIFF_OFF_MAX<=SIZE_MAX>>1.
   - Add optional BZ2 (BZIP2, libbz2) _IO method support.
 
 v0.8.0, 2025-07-03:

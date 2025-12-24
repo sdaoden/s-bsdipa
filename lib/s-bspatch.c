@@ -152,6 +152,10 @@ s_bsdipa_patch_parse_header(struct s_bsdipa_header *hp, uint8_t const *dat){
 			goto jleave;
 		if(x - hp->h_extra_len != hp->h_diff_len)
 			goto jleave;
+
+		/* Since v0.9.0 bsdipa generates patches testable like so */
+		if(x + 1 < hp->h_ctrl_len / ((s_bsdipa_off_t)sizeof(s_bsdipa_off_t) * 3))
+			goto jleave;
 	}
 	hp->h_before_len = x;
 
@@ -268,6 +272,7 @@ s_bsdipa_patch(struct s_bsdipa_patch_ctx *pcp){
 			goto jleave;
 		if((j = ctrl[0]) < 0 || j >= s_BSDIPA_OFF_MAX)
 			goto jleave;
+
 		/* A data-less control (but the first) is "malicious" */
 		if(any_tick && k == 0 && j == 0)
 			goto jleave;
