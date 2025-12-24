@@ -1,6 +1,6 @@
 #!/bin/sh -
 
-VERSION=0.8.1
+VERSION=0.9.0
 CONTACT='Steffen Nurpmeso <steffen@sdaoden.eu>'
 
 while [ $# -gt 0 ]; do

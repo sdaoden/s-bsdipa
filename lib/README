@@ -5,29 +5,31 @@ Colin Percival's BSDiff, imported from FreeBSD and transformed into
 a library; please see header comment of s-bsdipa-lib.h for more:
 create or apply binary difference patch.  In general:
 
-- one includes s-bsdipa-lib.h and uses the all-in-memory s_bsdipa_diff()
+- One includes s-bsdipa-lib.h and uses the all-in-memory s_bsdipa_diff()
   and s_bsdipa_patch() functions to create and apply patches.
   Ie, (for example mmap(2)ed) memory in, (heap) memory out.
 
-- necessary compression / storage preparation can (could) be achieved
+- Necessary compression / storage preparation can (could) be achieved
   easily by including s-bsdipa-io.h after defining s_BSDIPA_IO as
   desired, followed by using the according s_bsdipa_io_write_*() and
   _read_*() functions; These still do not perform direct I/O, but call
   a supplied hook with fully prepared buffers or store in (heap) memory,
   respectively.  Multiple _IO methods are provided.
 
-- in general the lib/ directory of the source repository is self-
+- In general the lib/ directory of the source repository is self-
   contained, and may be copied for inclusion in other projects.
+  (If s_BSDIPA_SMALL approach is taken, lib/libdivsufsort/ and
+  lib/divsufsort.h may also be removed.)
 
-- please see the introductional header comments of s-bsdipa-lib.h and
+- Please see the introductional header comments of s-bsdipa-lib.h and
   s-bsdipa-io.h for more.
 
-- the directory s-bsdipa contains a self-contained (except for
+- The directory s-bsdipa contains a self-contained (except for
   compression libraries) (example) program which can create and apply
   patches (like a combined FreeBSD bsdiff and bspatch program).
   It times execution and tracks memory usage on stderr.
 
-- the directory perl contains the self-contained BsDiPa CPAN module.
+- The directory perl contains the self-contained BsDiPa CPAN module.
   (Perl ships with ZLIB, liblzma/XZ and libz2/BZ2 support is
   compile-time detected.)
 
@@ -104,6 +106,20 @@ Contact: steffen at sdaoden dot eu.
 
 2. Releases
 -----------
+
+v0.9.0, 2025-12-24:
+  + Breaks backward compatibility of bsdipa_patch() as that assumes
+    patches satisfy content constraints that are only satisfied by
+    bsdipa_diff() of v0.9.0!!
+
+  + Import of Colin Percival's original qsufsort() algorithm; it was
+    replaced with libdivsufsort in FreeBSD, and Colin Percival pointed
+    me to this because of existing bugfixes.  The original variant is
+    smaller code, but suffers from a performance penalty on large files
+    (about 15% for unrelated 5 megabyte binaries) -- it is faster for
+    small files, however, so having it around is very beneficial.
+  ++ By default both algorithms are compiled in, their usage depends on
+     the data size.
 
 v0.8.1, 2025-12-20:
   + Notes:
