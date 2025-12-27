@@ -64,7 +64,7 @@ $(CONFIGH):
 	[ -n "$(s_BSDIPA_32)" ] && v1=s_BSDIPA_32="$(s_BSDIPA_32)";\
 	[ -n "$(s_BSDIPA_MAGIC_WINDOW)" ] && v2=s_BSDIPA_MAGIC_WINDOW="$(s_BSDIPA_MAGIC_WINDOW)";\
 	[ -n "$(s_BSDIPA_SMALL)" ] && v3=s_BSDIPA_SMALL=y;\
-	./configh.sh "$$v1" "$$v2"
+	./configh.sh "$$v1" "$$v2" "$$v3"
 $(LIB): $(CONFIGH) $(OBJS)
 	$(AR) crs $(@) $(OBJS)
 test: all
