@@ -16,17 +16,21 @@
  *@ - The s_BSDIPA_MAGIC_WINDOW is configurable: the original is bound to
  *@   (32- and) 64-bit binary diffs (8), but eg 16 or 32 are better (for text).
  *@ - Data serialization is in big endian/network byte order.
+ *@ - No file I/O, everything is stored on the heap.
  *@ - No bzip2 compression: callee should compress result.
  *@   NOTE: compression is necessary since data is stored in full, meaning
  *@   that identical bytes are stored as NUL.
  *@ -- The s-bsdipa-io.h header is a readily available I/O layer.
  *@    NOTE: I/O layers may impose further size limit restrictions!
- *@ - No file I/O, everything is stored on the heap.
  *@ - Internally diff- and extra data share heap to reduce memory overhead.
  *@ -- As a result diff data is stored in reverse order, last byte first.
  *@ - Memory allocation is solely done via user provided allocator.
  *@ - The header includes the extra data length, so that all information
  *@   is available through it.
+ *@ - "Data-less" control blocks cannot occur (but for the first):
+ *@   BSDiff may generate control blocks which contain no data, but only seek.
+ *@   Such fragments are instead collapsed to the former control block,
+ *@   tightening testable constraints on the header and control chunks.
  *@
  *@ Informational: original bsdiff file format:
  *@	0	8	"BSDIFF40"
