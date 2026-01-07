@@ -330,7 +330,9 @@ s_bsdipa_patch(struct s_bsdipa_patch_ctx *pcp){
 		}
 	}
 
-	rv = s_BSDIPA_OK;
+	if(pcp->pc_header.h_ctrl_len == 0)
+		rv = s_BSDIPA_OK;
+
 jleave:
 	return rv;
 }
