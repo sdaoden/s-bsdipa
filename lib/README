@@ -35,8 +35,8 @@ create or apply binary difference patch.  In general:
 
 Licenses (full text included in s-bsdipa-lib.h):
   libdivsufsort(/LICENSE): MIT
-  s-bsdiff.c, s-bspatch.c: BSD-2-clause
-  s-bsdipa-lib.h, s-bsdipa-io.h, s-bsdipa.c: ISC
+  s-bsdiff.c: BSD-2-clause
+  s-bspatch.c, s-bsdipa-lib.h, s-bsdipa-io.h, s-bsdipa.c: ISC
 
 Repository:
   browse: https?://git.sdaoden.eu/browse/s-bsdipa.git

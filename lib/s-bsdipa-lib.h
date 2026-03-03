@@ -72,7 +72,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-/*@ The algorithm as is used inside the library is:
+/*@ The algorithm as is used inside the library (s-bsdiff.c) is:
  *
  * SPDX-License-Identifier: BSD-2-Clause
  *
@@ -100,7 +100,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-/*@ The optional (!s_BSDIPA_SMALL) libdivsufsort algorithm is:
+/*@ The optional (!s_BSDIPA_SMALL) libdivsufsort algorithm (for s-bsdiff.c) is:
  *
  * SPDX-License-Identifier: MIT
  *
