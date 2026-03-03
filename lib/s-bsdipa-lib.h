@@ -46,18 +46,18 @@
  */
 #define s_BSDIPA_COPYRIGHT \
 	"S-bsdipa is\n" \
-	"	Copyright (c) 2024 - 2025 Steffen Nurpmeso\n" \
+	"	Copyright (c) 2024 - 2026 Steffen Nurpmeso\n" \
 	"	SPDX-License-Identifier: ISC\n" \
 	"The used BSDiff algorithm is\n" \
 	"	Copyright 2003-2005 Colin Percival\n" \
 	"	SPDX-License-Identifier: BSD-2-Clause\n" \
-	"and it uses libdivsufsort that is\n" \
+	"and it optionally (!s_BSDIPA_SMALL) uses libdivsufsort that is\n" \
 	"	Copyright (c) 2003 Yuta Mori All rights reserved.\n" \
 	"	SPDX-License-Identifier: MIT\n"
 /* L5E> */
 /*@ S-bsdipa copyright:
  *
- * Copyright (c) 2024 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2024 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -72,7 +72,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-/*@ The algorithm as is used inside the library actually is:
+/*@ The algorithm as is used inside the library is:
  *
  * SPDX-License-Identifier: BSD-2-Clause
  *
@@ -100,7 +100,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-/*@ The library used by the algorithm actually is:
+/*@ The optional (!s_BSDIPA_SMALL) libdivsufsort algorithm is:
  *
  * SPDX-License-Identifier: MIT
  *
@@ -130,7 +130,7 @@
 #ifndef s_BSDIPA_LIB_H
 #define s_BSDIPA_LIB_H
 
-/* s_BSDIPA_{VERSION,CONTACT, 32,MAGIC_WINDOW,SMALL}.
+/* s_BSDIPA_{VERSION,CONTACT,32,MAGIC_WINDOW,SMALL}.
  * The latter three must be tested via defined(). */
 #include <s-bsdipa-config.h>
 
