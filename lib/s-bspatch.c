@@ -53,14 +53,14 @@ a_bspatch_xin(uint8_t const *buf){
 	s_bsdipa_off_t y;
 
 	y = buf[0] & 0x7F;
-	y = y * 256; y += buf[1];
-	y = y * 256; y += buf[2];
-	y = y * 256; y += buf[3];
+	y <<= 8; y += buf[1];
+	y <<= 8; y += buf[2];
+	y <<= 8; y += buf[3];
 #ifndef s_BSDIPA_32
-	y = y * 256; y += buf[4];
-	y = y * 256; y += buf[5];
-	y = y * 256; y += buf[6];
-	y = y * 256; y += buf[7];
+	y <<= 8; y += buf[4];
+	y <<= 8; y += buf[5];
+	y <<= 8; y += buf[6];
+	y <<= 8; y += buf[7];
 #endif
 	if(buf[0] & 0x80)
 		y = -y;
@@ -272,21 +272,11 @@ s_bsdipa_patch(struct s_bsdipa_patch_ctx *pcp){
 
 			if(!a_bspatch_check_add_positive(respos, j) || respos + j > pcp->pc_header.h_before_len)
 				goto jleave;
-			if(!a_bspatch_check_add_positive(aftpos, j))
+			if(!a_bspatch_check_add_positive(aftpos, j) || aftpos + j > (s_bsdipa_off_t)pcp->pc_after_len)
 				goto jleave;
 
-			for(i = j; i--;)
-				pcp->pc_restored_dat[respos++] = *--pcp->pc_diff_dat;
-			respos -= j;
-
-			k = j;
-			if(aftpos + k >= (s_bsdipa_off_t)pcp->pc_after_len)
-				k = (s_bsdipa_off_t)pcp->pc_after_len - aftpos;
-			for(i = 0; i < k; ++i)
-				pcp->pc_restored_dat[respos + i] += pcp->pc_after_dat[aftpos + i];
-
-			respos += j;
-			aftpos += j;
+			while(j-- != 0)
+				pcp->pc_restored_dat[respos++] = *--pcp->pc_diff_dat + pcp->pc_after_dat[aftpos++];
 		}
 
 		/* Extra dat */
