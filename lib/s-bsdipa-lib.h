@@ -130,8 +130,8 @@
 #ifndef s_BSDIPA_LIB_H
 #define s_BSDIPA_LIB_H
 
-/* s_BSDIPA_{VERSION,CONTACT,32,MAGIC_WINDOW,SMALL}.
- * The latter three must be tested via defined(). */
+/* s_BSDIPA_{VERSION,CONTACT} and s_BSDIPA_{32,MAGIC_WINDOW,SMALL}.
+ * The latter series must be tested via defined(). */
 #include <s-bsdipa-config.h>
 
 #include <sys/types.h>
@@ -144,7 +144,7 @@ extern "C" {
 #endif
 
 /* Integer type for header and control block triples: file size / offsets.
- * For easy overflow avoidance (left hand value) we also test >s_BSDOFF_MAX-1.
+ * For easy overflow avoidance usual test is >s_BSDIPA_OFF_MAX-1.
  * The real limit is even smaller; for patch preparation:
  *	MIN(s_BSDIPA_OFF_MAX, SIZE_MAX) / sizeof(s_bsdipa_off_t)
  * (I/O layers of s-bsdipa-io.h may impose further size constraints.) */
@@ -187,7 +187,7 @@ struct s_bsdipa_header{
 	s_bsdipa_off_t h_before_len; /* Equals s_bsdipa_diff_ctx::dc_before_len. */
 };
 
-/* Informational: a control triple. */
+/* Informational: a control triple (to be worked in sequential order). */
 struct s_bsdipa_ctrl_triple{
 	s_bsdipa_off_t ct_diff_len; /* Copy that much from diff block. */
 	s_bsdipa_off_t ct_extra_len; /* Copy that much from extra block. */
@@ -209,8 +209,8 @@ struct s_bsdipa_diff_ctx{
 	uint8_t const *dc_after_dat; /* New data after changes, plus length. */
 	uint64_t dc_after_len;
 	/* Number of bytes in "a window".  If <=0 s_BSDIPA_MAGIC_WINDOW is assigned and used.
-	 * For binary data sizeof(void*) is useful, higher values (16, 32) impose savings for text.
-	 * There is no maximum imposed, but the algorithm does *not* perform integer overflow checks! */
+	 * For binary data sizeof(void*) is useful, higher values (16, 32) may benefit text (better).
+	 * "No maximum" (only within 7-bit useful), but note integer overflow checks are *not* performed! */
 	int32_t dc_magic_window;
 	int8_t dc__dummy[3];
 	/* Outputs: (allocated result data; freed by s_bsdipa_diff_free()). */
@@ -258,7 +258,7 @@ struct s_bsdipa_patch_ctx{
 	uint8_t const *pc_extra_dat;
 	struct s_bsdipa_header pc_header; /* Deserialized header. */
 	/* Outputs (allocated result data; freed by s_bsdipa_patch_free()).
-	 * (The buffer is guaranteed to have room for one additional byte.) */
+	 * Remark: the buffer is guaranteed to have room for one additional byte. */
 	uint8_t *pc_restored_dat;
 	s_bsdipa_off_t pc_restored_len; /* (Actually a copy of pc_header.h_before_len.) */
 };
