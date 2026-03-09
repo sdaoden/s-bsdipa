@@ -21,7 +21,7 @@
 #define a_STATS 1
 
 #define _POSIX_C_SOURCE 202405L
-#define _GNU_SOURCE
+#define _GNU_SOURCE 1
 
 #include <sys/mman.h>
 
@@ -94,25 +94,25 @@
 #  define a_CLOCK_SEC(X) (X)->tv_sec
 #  define a_CLOCK_SSEC_2_1000th(X) ((X)->tv_nsec / (1000000000l / 1000))
 #  define a_CLOCK(X) clock_gettime(CLOCK_MONOTONIC, X)
-#  define a_CLOCK_SUB(X, Y) \
+#  define a_CLOCK_SUB(X, Y) do{\
 	(X)->tv_sec -= (Y)->tv_sec;\
 	(X)->tv_nsec -= (Y)->tv_nsec;\
 	if((X)->tv_nsec < 0){\
 		--(X)->tv_sec;\
 		(X)->tv_nsec += 1000000000l;\
-	}
+	}}while(0)
 # else
 #  define a_CLOCK_T struct timeval
 #  define a_CLOCK_SEC(X) (X)->tv_sec
 #  define a_CLOCK_SSEC_2_1000th(X) ((X)->tv_usec / (1000000l / 1000))
 #  define a_CLOCK(X) gettimeofday(X, NULL)
-#  define a_CLOCK_SUB(X, Y) \
+#  define a_CLOCK_SUB(X, Y) do{\
 	(X)->tv_sec -= (Y)->tv_sec;\
 	(X)->tv_usec -= (Y)->tv_usec;\
 	if((X)->tv_usec < 0){\
 		--(X)->tv_sec;\
 		(X)->tv_usec += 1000000l;\
-	}
+	}}while(0)
 # endif
 #endif /* a_STATS */
 
@@ -152,7 +152,7 @@ static struct a_io const a_io_meths[] = {
 
 #if a_STATS
 /* a_mem_curr only !NDEBUG */
-struct a_mem *a_mem_list;
+static struct a_mem *a_mem_list;
 static size_t a_mem_peek, a_mem_all, a_mem_allno, a_mem_curr;
 static s_bsdipa_off_t a_reslen;
 #endif
@@ -272,7 +272,7 @@ a_hook_write(void *cookie, uint8_t const *dat, s_bsdipa_off_t len, s_bsdipa_off_
 
 	if(len > 0){
 		a_RESLEN(len);
-		if(fwrite(dat, len, 1, fp) != 1)
+		if(fwrite(dat, (size_t)len, 1, fp) != 1)
 			rv = s_BSDIPA_INVAL;
 	}
 
@@ -333,7 +333,7 @@ main(int argc, char *argv[]){
 		switch(rv){
 		case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 			f |= a_IO_COOKIE;
-			ioc.c.ioc_level = rv - '0';
+			ioc.c.ioc_level = (uint32_t)(rv - '0');
 			break;
 		case 'f': f |= a_FORCE; break;
 		case 'H': f |= a_NO_HEADER; break;
@@ -569,7 +569,7 @@ jpsrch:
 			/* and make that our new real patch input */
 			f |= a_FREE_2ND;
 			c.p.pc_patch_dat = c.p.pc_restored_dat;
-			c.p.pc_patch_len = c.p.pc_restored_len;
+			c.p.pc_patch_len = (uint64_t)c.p.pc_restored_len;
 		}
 
 		a_CLOCK(&ts);
@@ -591,7 +591,7 @@ jpsrch:
 			for(dat = c.p.pc_restored_dat; c.p.pc_restored_len > 0;){
 				size_t i;
 
-				i = c.p.pc_restored_len;
+				i = (size_t)c.p.pc_restored_len;
 				if(i >= INT32_MAX - 1)
 					i = INT32_MAX - 1;
 				c.p.pc_restored_len -= (s_bsdipa_off_t)i;

@@ -109,7 +109,9 @@ extern "C" {
  *
  * Note: during all the life time the memory allocator must not change!
  * If the cookie is used for s_bsdipa_diff() as well as s_bsdipa_patch(), then the memory allocator and its cookie
- * (if used) must be the same throughout the lifetime of the I/O cookie! */
+ * (if used) must be the same throughout the lifetime of the I/O cookie!
+ *
+ * Remarks: "super type" alignment may mismatch actual "subclass", but assumed "ok through instantiation". */
 struct s_bsdipa_io_cookie{
 	uint8_t ioc_is_init;
 	uint8_t ioc_type; /* s_BSDIPA_IO_..: actual type */
@@ -343,7 +345,7 @@ s_bsdipa_io_write_zlib(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_pt
 	extlen = dcp->dc_extra_len;
 
 	/* All lengths fit in s_BSDIPA_OFF_MAX, which is signed: addition and cast ok */
-	olen = (size_t)(sizeof(dcp->dc_header) + dcp->dc_ctrl_len + diflen + extlen);
+	olen = (size_t)((s_bsdipa_off_t)sizeof(dcp->dc_header) + dcp->dc_ctrl_len + diflen + extlen);
 	if(try_oneshot){
 		uLong ulo;
 
@@ -384,7 +386,7 @@ jolenmax:
 
 		flusht = Z_NO_FLUSH;
 		if(x == 0){
-			zsp->next_in = (Bytef*)dcp->dc_header;
+			zsp->next_in = (Bytef z_const*)(void*)dcp->dc_header;
 			zsp->avail_in = sizeof(dcp->dc_header);
 			x = 1;
 		}else if(x == 1){
@@ -437,7 +439,7 @@ jolenmax:
 			case Z_STREAM_ERROR: rv = s_BSDIPA_INVAL; goto jdone;
 			}
 
-			z = olen - zsp->avail_out;
+			z = (s_bsdipa_off_t)(olen - zsp->avail_out);
 			if(y == Z_STREAM_END || (z > 0 && zsp->avail_out == 0)){
 				int xarg;
 
@@ -447,7 +449,7 @@ jolenmax:
 						try_oneshot = 1;
 					xarg = 0;
 				}else
-					xarg = (try_oneshot < 0) ? -(s_bsdipa_off_t)++olen : 1;
+					xarg = (try_oneshot < 0) ? -(int)(s_bsdipa_off_t)++olen : 1;
 
 				if((rv = (*hook)(hook_cookie, obuf, z, xarg)) != s_BSDIPA_OK)
 					goto jdone;
@@ -499,9 +501,9 @@ s_bsdipa_io_read_zlib(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie 
 
 	/* make inflateEnd() callable */
 	zsp = &zs;
-	zs.next_in = (Bytef*)pcp->pc_patch_dat;
-	zs.avail_in = (patlen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (int)patlen;
-	patlen -= (unsigned int)zs.avail_in;
+	zs.next_in = (Bytef z_const*)(void*)pcp->pc_patch_dat;
+	zs.avail_in = (patlen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (uInt)patlen;
+	patlen -= zs.avail_in;
 	zs.zalloc = &s__bsdipa_io_zlib_alloc;
 	zs.zfree = &s__bsdipa_io_zlib_free;
 	zs.opaque = (void*)&pcp->pc_mem;
@@ -553,7 +555,7 @@ s_bsdipa_io_read_zlib(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie 
 	}
 
 	zsp->next_out = pcp->pc_restored_dat;
-	zsp->avail_out = (reslen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (int)reslen;
+	zsp->avail_out = (reslen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (uInt)reslen;
 	reslen -= zsp->avail_out;
 
 	for(;;){
@@ -586,7 +588,7 @@ s_bsdipa_io_read_zlib(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie 
 		}
 		if(zsp->avail_in == 0){
 			zsp->avail_in = (uInt)((patlen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : patlen);
-			patlen -= (s_bsdipa_off_t)zsp->avail_in;
+			patlen -= zsp->avail_in;
 		}
 	}
 
@@ -674,7 +676,7 @@ static inline lzma_stream *
 s__bsdipa_io_cookie_create_xz(struct s_bsdipa_io_cookie *iocp, struct s_bsdipa_memory_ctx const *mcp){
 	struct s_bsdipa_io_cookie_xz *iocxp;
 
-	iocxp = (struct s_bsdipa_io_cookie_xz*)iocp;
+	iocxp = (struct s_bsdipa_io_cookie_xz*)(void*)iocp;
 
 	if(!iocxp->iocx_super.ioc_is_init){
 		iocxp->iocx_super.ioc_is_init = 1;
@@ -695,7 +697,7 @@ s_bsdipa_io_cookie_gut_xz(struct s_bsdipa_io_cookie *iocp){
 	if(iocp != NULL && iocp->ioc_is_init && iocp->ioc_type == s_BSDIPA_IO_XZ){
 		struct s_bsdipa_io_cookie_xz *iocxp;
 
-		iocxp = (struct s_bsdipa_io_cookie_xz*)iocp;
+		iocxp = (struct s_bsdipa_io_cookie_xz*)(void*)iocp;
 		lzma_end(&iocxp->iocx_s);
 	}
 }
@@ -741,7 +743,7 @@ s_bsdipa_io_write_xz(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf 
 	extlen = dcp->dc_extra_len;
 
 	/* All lengths fit in s_BSDIPA_OFF_MAX, which is signed: addition and cast ok */
-	olen = (size_t)(sizeof(dcp->dc_header) + dcp->dc_ctrl_len + diflen + extlen);
+	olen = (size_t)((s_bsdipa_off_t)sizeof(dcp->dc_header) + dcp->dc_ctrl_len + diflen + extlen);
 	if(try_oneshot){
 		size_t ulo;
 
@@ -834,7 +836,7 @@ jolenmax:
 			default: rv = s_BSDIPA_INVAL; goto jdone;
 			}
 
-			z = olen - zsp->avail_out;
+			z = (s_bsdipa_off_t)(olen - zsp->avail_out);
 			if(y == LZMA_STREAM_END || (z > 0 && zsp->avail_out == 0)){
 				int xarg;
 
@@ -844,7 +846,7 @@ jolenmax:
 						try_oneshot = 1;
 					xarg = 0;
 				}else
-					xarg = (try_oneshot < 0) ? -(s_bsdipa_off_t)++olen : 1;
+					xarg = (try_oneshot < 0) ? -(int)(s_bsdipa_off_t)++olen : 1;
 
 				if((rv = (*hook)(hook_cookie, obuf, z, xarg)) != s_BSDIPA_OK)
 					goto jdone;
@@ -912,7 +914,7 @@ s_bsdipa_io_read_xz(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *i
 #ifdef LZMA_FAIL_FAST
 			| LZMA_FAIL_FAST
 #endif
-			)){
+		)){
 	case LZMA_OK: break;
 	case LZMA_MEM_ERROR: rv = s_BSDIPA_NOMEM; goto jdone;
 	/* LZMA_OPTIONS_ERROR: */
@@ -990,7 +992,7 @@ s_bsdipa_io_read_xz(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *i
 		}
 		if(zsp->avail_in == 0){
 			zsp->avail_in = (size_t)((patlen > s__BSDIPA_IO_XZ_LIMIT) ? s__BSDIPA_IO_XZ_LIMIT : patlen);
-			patlen -= (s_bsdipa_off_t)zsp->avail_in;
+			patlen -= zsp->avail_in;
 		}
 	}
 
@@ -1047,7 +1049,7 @@ s__bsdipa_io_bz2_alloc(void *my_cookie, int no, int size){
 	struct s_bsdipa_memory_ctx *mcp;
 
 	mcp = (struct s_bsdipa_memory_ctx*)my_cookie;
-	memsz = (size_t)no * size;
+	memsz = (size_t)no * (size_t)size;
 
 	rv = (mcp->mc_alloc != NULL) ? (*mcp->mc_alloc)(memsz) : (*mcp->mc_custom_alloc)(mcp->mc_custom_cookie, memsz);
 
@@ -1097,7 +1099,7 @@ s_bsdipa_io_write_bz2(struct s_bsdipa_diff_ctx const *dcp, s_bsdipa_io_write_ptf
 	extlen = dcp->dc_extra_len;
 
 	/* All lengths fit in s_BSDIPA_OFF_MAX, which is signed: addition and cast ok */
-	olen = (size_t)(sizeof(dcp->dc_header) + dcp->dc_ctrl_len + diflen + extlen);
+	olen = (size_t)((s_bsdipa_off_t)sizeof(dcp->dc_header) + dcp->dc_ctrl_len + diflen + extlen);
 	if(try_oneshot){
 		size_t i;
 
@@ -1130,7 +1132,7 @@ jolenmax:
 	olen -= (try_oneshot != 0);
 
 	bzs.next_out = (char*)obuf;
-	bzs.avail_out = (int)olen;
+	bzs.avail_out = (unsigned int)olen;
 	ccp = dcp->dc_ctrl;
 
 	for(x = 0;;){
@@ -1138,13 +1140,13 @@ jolenmax:
 
 		flusht = BZ_RUN;
 		if(x == 0){
-			bzs.next_in = (char*)dcp->dc_header;
+			bzs.next_in = (char*)(void*)dcp->dc_header;
 			bzs.avail_in = sizeof(dcp->dc_header);
 			x = 1;
 		}else if(x == 1){
 			if(ccp != NULL){
 				bzs.next_in = (char*)ccp->cc_dat;
-				bzs.avail_in = (int)ccp->cc_len;
+				bzs.avail_in = (unsigned int)ccp->cc_len;
 				ccp = ccp->cc_next;
 			}
 			if(ccp == NULL)
@@ -1157,7 +1159,7 @@ jolenmax:
 				diflen -= s__BSDIPA_IO_BZ2_LIMIT;
 				x = 3;
 			}else{
-				bzs.avail_in = (int)diflen;
+				bzs.avail_in = (unsigned int)diflen;
 				x = 4;
 			}
 		}else if(x < 6){
@@ -1168,7 +1170,7 @@ jolenmax:
 				extlen -= s__BSDIPA_IO_BZ2_LIMIT;
 				x = 5;
 			}else{
-				bzs.avail_in = (int)extlen;
+				bzs.avail_in = (unsigned int)extlen;
 				x = 6;
 			}
 		}else{
@@ -1192,7 +1194,7 @@ jolenmax:
 			default: rv = s_BSDIPA_INVAL; goto jdone;
 			}
 
-			z = olen - bzs.avail_out;
+			z = (s_bsdipa_off_t)(olen - bzs.avail_out);
 			if(y == BZ_STREAM_END || (z > 0 && bzs.avail_out == 0)){
 				int xarg;
 
@@ -1202,7 +1204,7 @@ jolenmax:
 						try_oneshot = 1;
 					xarg = 0;
 				}else
-					xarg = (try_oneshot < 0) ? -(s_bsdipa_off_t)++olen : 1;
+					xarg = (try_oneshot < 0) ? -(int)(s_bsdipa_off_t)++olen : 1;
 
 				if((rv = (*hook)(hook_cookie, obuf, z, xarg)) != s_BSDIPA_OK)
 					goto jdone;
@@ -1214,7 +1216,7 @@ jolenmax:
 					goto jdone;
 				}
 				bzs.next_out = (char*)obuf;
-				bzs.avail_out = (int)olen;
+				bzs.avail_out = (unsigned int)olen;
 			}
 
 			if(flusht == BZ_FINISH){
@@ -1254,7 +1256,7 @@ s_bsdipa_io_read_bz2(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *
 	bzs.bzfree = &s__bsdipa_io_bz2_free;
 	bzs.opaque = (void*)&pcp->pc_mem;
 
-	bzs.next_in = (char*)pcp->pc_patch_dat;
+	bzs.next_in = (char*)(void*)pcp->pc_patch_dat;
 	bzs.avail_in = (patlen > s__BSDIPA_IO_BZ2_LIMIT) ? s__BSDIPA_IO_BZ2_LIMIT : (unsigned int)patlen;
 	patlen -= (unsigned int)bzs.avail_in;
 
@@ -1311,7 +1313,7 @@ s_bsdipa_io_read_bz2(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *
 	}
 
 	bzs.next_out = (char*)pcp->pc_restored_dat;
-	bzs.avail_out = (reslen > s__BSDIPA_IO_BZ2_LIMIT) ? s__BSDIPA_IO_BZ2_LIMIT : (int)reslen;
+	bzs.avail_out = (reslen > s__BSDIPA_IO_BZ2_LIMIT) ? s__BSDIPA_IO_BZ2_LIMIT : (unsigned int)reslen;
 	reslen -= bzs.avail_out;
 
 	for(;;){
@@ -1333,12 +1335,14 @@ s_bsdipa_io_read_bz2(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *
 		}
 
 		if(bzs.avail_out == 0){
-			bzs.avail_out = (int)((reslen > s__BSDIPA_IO_BZ2_LIMIT) ? s__BSDIPA_IO_BZ2_LIMIT : reslen);
+			bzs.avail_out = (unsigned int)((reslen > s__BSDIPA_IO_BZ2_LIMIT)
+					? s__BSDIPA_IO_BZ2_LIMIT : reslen);
 			reslen -= (s_bsdipa_off_t)bzs.avail_out;
 		}
 		if(bzs.avail_in == 0){
-			bzs.avail_in = (int)((patlen > s__BSDIPA_IO_BZ2_LIMIT) ? s__BSDIPA_IO_BZ2_LIMIT : patlen);
-			patlen -= (s_bsdipa_off_t)bzs.avail_in;
+			bzs.avail_in = (unsigned int)((patlen > s__BSDIPA_IO_BZ2_LIMIT)
+					? s__BSDIPA_IO_BZ2_LIMIT : patlen);
+			patlen -= bzs.avail_in;
 		}
 	}
 

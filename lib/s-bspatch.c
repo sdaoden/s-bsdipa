@@ -178,13 +178,13 @@ s_bsdipa_patch(struct s_bsdipa_patch_ctx *pcp){
 		respos = pcp->pc_header.h_ctrl_len;
 		if(respos < 0 || x < (uint64_t)respos)
 			goto jleave;
-		x -= respos;
+		x -= (uint64_t)respos;
 		pcp->pc_diff_dat += respos;
 
 		respos = pcp->pc_header.h_diff_len;
 		if(respos < 0 || x < (uint64_t)respos)
 			goto jleave;
-		x -= respos;
+		x -= (uint64_t)respos;
 		pcp->pc_diff_dat += respos;
 
 		pcp->pc_extra_dat = pcp->pc_diff_dat;
@@ -289,7 +289,7 @@ s_bsdipa_patch(struct s_bsdipa_patch_ctx *pcp){
 			if(!a_bspatch_check_add_positive(respos, j) || respos + j > pcp->pc_header.h_before_len)
 				goto jleave;
 
-			memcpy(&pcp->pc_restored_dat[respos], pcp->pc_extra_dat, j);
+			memcpy(&pcp->pc_restored_dat[respos], pcp->pc_extra_dat, (size_t)j);
 			pcp->pc_extra_dat += j;
 
 			respos += j;
