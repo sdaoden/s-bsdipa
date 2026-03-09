@@ -8,7 +8,11 @@ SEQ ?= seq
 
 PROG = s-bsdipa
 
-SUFWW = #-Weverything
+# smake predefines this (cannot handle # in variables)
+NUMBER_SIGN?=\#
+SUFLVLC=-std=c99
+
+SUFWW =# -Weverything -Wno-unsafe-buffer-usage -Wno-old-style-cast
 SUFW = -W -Wall -pedantic $(SUFWW) \
 	\
 	-Wno-atomic-implicit-seq-cst \
@@ -32,7 +36,7 @@ SUFS = -fno-common \
 
 SUFX = $(SUFW) $(SUFS)
 
-CFLAGS += -std=c99 $(s_BSDIPA_CFLAGS) -I../lib \
+CFLAGS += $(SUFLVLC) $(s_BSDIPA_CFLAGS) -I../lib \
 	$$(xz --version >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_XZ) \
 	$$(bzip2 --help >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_BZ2)
 LIBS = ../lib/libsbsdipa.a -lz \
