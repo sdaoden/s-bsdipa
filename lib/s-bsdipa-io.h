@@ -1019,7 +1019,7 @@ jdone:
 # ifdef s__BSDIPA_IO_BZ2
 #  error s_BSDIPA_IO==s_BSDIPA_IO_BZ2 already defined
 # endif
-# define s__BSDIPA_IO_BZ
+# define s__BSDIPA_IO_BZ2
 # define s_BSDIPA_IO_NAME s_BSDIPA_IO_NAME_BZ2
 
 # include <assert.h>
