@@ -155,16 +155,15 @@ a_bsdiff_xout(s_bsdipa_off_t x, uint8_t *buf){ /* xxx use endian.h stuff */
 	y = lt0 ? -x : x;
 
 #ifndef s_BSDIPA_32
-			buf[7] = y % 256; y -= buf[7];
-	y = y / 256;	buf[6] = y % 256; y -= buf[6];
-	y = y / 256;	buf[5] = y % 256; y -= buf[5];
-	y = y / 256;	buf[4] = y % 256; y -= buf[4];
-	y = y / 256;
+	buf[7] = (uint8_t)(y & 0xFF); y >>= 8;
+	buf[6] = (uint8_t)(y & 0xFF); y >>= 8;
+	buf[5] = (uint8_t)(y & 0xFF); y >>= 8;
+	buf[4] = (uint8_t)(y & 0xFF); y >>= 8;
 #endif
-			buf[3] = y % 256; y -= buf[3];
-	y = y / 256;	buf[2] = y % 256; y -= buf[2];
-	y = y / 256;	buf[1] = y % 256; y -= buf[1];
-	y = y / 256;	buf[0] = y % 256;
+	buf[3] = (uint8_t)(y & 0xFF); y >>= 8;
+	buf[2] = (uint8_t)(y & 0xFF); y >>= 8;
+	buf[1] = (uint8_t)(y & 0xFF); y >>= 8;
+	buf[0] = (uint8_t)(y /*& 0xFF*/);
 	if(lt0)
 		buf[0] |= 0x80;
 }
