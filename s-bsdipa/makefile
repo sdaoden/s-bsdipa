@@ -37,11 +37,12 @@ SUFS = -fno-common \
 SUFX = $(SUFW) $(SUFS)
 
 CFLAGS += $(SUFLVLC) $(s_BSDIPA_CFLAGS) -I../lib \
-	$$(xz --version >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_XZ) \
-	$$(bzip2 --help >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_BZ2)
+	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" bz2 >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_BZ2) \
+	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" xz >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_XZ) \
+
 LIBS = ../lib/libsbsdipa.a -lz \
-	$$(xz --version >/dev/null 2>&1 && printf '%s' -llzma) \
-	$$(bzip2 --help >/dev/null 2>&1 && printf '%s' -lbz2)
+	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" bz2 >/dev/null 2>&1 && printf '%s' -lbz2) \
+	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" xz >/dev/null 2>&1 && printf '%s' -llzma) \
 
 SRC = $(PROG).c
 
@@ -50,8 +51,8 @@ $(PROG): $(SRC) ../lib/s-bsdipa-io.h
 all: $(PROG)
 test: all
 	DP32=$(s_BSDIPA_32) \
-	DPXZ=$$(xz --version >/dev/null 2>&1 && echo y) \
-	DPBZ2=$$(bzip2 --help >/dev/null 2>&1 && echo y) \
+	DPBZ2=$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" bz2 >/dev/null 2>&1 && echo y) \
+	DPXZ=$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" xz >/dev/null 2>&1 && echo y) \
 	DD="$(DD)" MKDIR="$(MKDIR)" RM="$(RM)" SEQ="$(SEQ)" \
 	exec ./s-bsdipa-test.sh
 clean:
