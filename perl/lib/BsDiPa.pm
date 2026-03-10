@@ -82,7 +82,7 @@ and always uses the (integrated) libdivsufsort optimization.
 
 =over
 
-=item C<VERSION> (string, eg, '0.9.0')
+=item C<VERSION> (string, eg, '0.9.1')
 
 A version string.
 

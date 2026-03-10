@@ -4,10 +4,12 @@
  *@ Remarks:
  *@ - If s_BSDIPA_32 is defined, 31-bit instead of 63-bit limits.
  *@ - Note: the real limit is maximally
- *@	MIN(s_BSDIPA_OFF_MAX, SIZE_MAX) / sizeof(s_bsdipa_off_t)
+ *@   MIN(s_BSDIPA_OFF_MAX, SIZE_MAX) / sizeof(s_bsdipa_off_t)
  *@   (with 32-bit size_t this can be restrictive)!
  *@ - Algorithm requires a lot of memory, multiple times the input size!
  *@   With s_BSDIPA_32 the overhead can almost be halved.
+ *@ - If s_BSDIPA_SMALL is defined, libdivsufsort is not actually used,
+ *@   but only the original BSDiff algorithm of Colin Percival.
  *@ - Code requires an ISO STD C99 environment.
  *@
  *@ Changes to original bsdiff / libdivsufsort:
