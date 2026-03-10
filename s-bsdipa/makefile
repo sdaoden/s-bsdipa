@@ -39,10 +39,12 @@ SUFX = $(SUFW) $(SUFS)
 CFLAGS += $(SUFLVLC) $(s_BSDIPA_CFLAGS) -I../lib \
 	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" bz2 >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_BZ2) \
 	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" xz >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_XZ) \
+	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" zstd >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_ZSTD) \
 
 LIBS = ../lib/libsbsdipa.a -lz \
 	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" bz2 >/dev/null 2>&1 && printf '%s' -lbz2) \
 	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" xz >/dev/null 2>&1 && printf '%s' -llzma) \
+	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" zstd >/dev/null 2>&1 && printf '%s' -lzstd) \
 
 SRC = $(PROG).c
 
@@ -53,6 +55,7 @@ test: all
 	DP32=$(s_BSDIPA_32) \
 	DPBZ2=$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" bz2 >/dev/null 2>&1 && echo y) \
 	DPXZ=$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" xz >/dev/null 2>&1 && echo y) \
+	DPZSTD=$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" zstd >/dev/null 2>&1 && echo y) \
 	DD="$(DD)" MKDIR="$(MKDIR)" RM="$(RM)" SEQ="$(SEQ)" \
 	exec ./s-bsdipa-test.sh
 clean:

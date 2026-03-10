@@ -49,9 +49,11 @@
 #define s_BSDIPA_IO s_BSDIPA_IO_RAW
 #include "s-bsdipa-io.h"
 
-#undef s_BSDIPA_IO
-#define s_BSDIPA_IO s_BSDIPA_IO_ZLIB
-#include "s-bsdipa-io.h"
+#ifdef s__BSDIPA_BZ2
+# undef s_BSDIPA_IO
+# define s_BSDIPA_IO s_BSDIPA_IO_BZ2
+# include "s-bsdipa-io.h"
+#endif
 
 #ifdef s__BSDIPA_XZ
 # undef s_BSDIPA_IO
@@ -59,9 +61,13 @@
 # include "s-bsdipa-io.h"
 #endif
 
-#ifdef s__BSDIPA_BZ2
+#undef s_BSDIPA_IO
+#define s_BSDIPA_IO s_BSDIPA_IO_ZLIB
+#include "s-bsdipa-io.h"
+
+#ifdef s__BSDIPA_ZSTD
 # undef s_BSDIPA_IO
-# define s_BSDIPA_IO s_BSDIPA_IO_BZ2
+# define s_BSDIPA_IO s_BSDIPA_IO_ZSTD
 # include "s-bsdipa-io.h"
 #endif
 
@@ -132,15 +138,6 @@ struct a_mem{
 #endif
 
 static struct a_io const a_io_meths[] = {
-	[s_BSDIPA_IO_RAW] = {s_bsdipa_io_write_raw, s_bsdipa_io_read_raw, s_BSDIPA_IO_RAW, s_BSDIPA_IO_NAME_RAW},
-	[s_BSDIPA_IO_ZLIB] = {s_bsdipa_io_write_zlib, s_bsdipa_io_read_zlib, s_BSDIPA_IO_ZLIB, s_BSDIPA_IO_NAME_ZLIB},
-	[s_BSDIPA_IO_XZ] = {
-#ifdef s__BSDIPA_XZ
-			s_bsdipa_io_write_xz, s_bsdipa_io_read_xz,
-#else
-			NULL, NULL,
-#endif
-			s_BSDIPA_IO_XZ, s_BSDIPA_IO_NAME_XZ},
 	[s_BSDIPA_IO_BZ2] = {
 #ifdef s__BSDIPA_BZ2
 			s_bsdipa_io_write_bz2, s_bsdipa_io_read_bz2,
@@ -148,6 +145,22 @@ static struct a_io const a_io_meths[] = {
 			NULL, NULL,
 #endif
 			s_BSDIPA_IO_BZ2, s_BSDIPA_IO_NAME_BZ2},
+	[s_BSDIPA_IO_RAW] = {s_bsdipa_io_write_raw, s_bsdipa_io_read_raw, s_BSDIPA_IO_RAW, s_BSDIPA_IO_NAME_RAW},
+	[s_BSDIPA_IO_XZ] = {
+#ifdef s__BSDIPA_XZ
+			s_bsdipa_io_write_xz, s_bsdipa_io_read_xz,
+#else
+			NULL, NULL,
+#endif
+			s_BSDIPA_IO_XZ, s_BSDIPA_IO_NAME_XZ},
+	[s_BSDIPA_IO_ZLIB] = {s_bsdipa_io_write_zlib, s_bsdipa_io_read_zlib, s_BSDIPA_IO_ZLIB, s_BSDIPA_IO_NAME_ZLIB},
+	[s_BSDIPA_IO_ZSTD] = {
+#ifdef s__BSDIPA_ZSTD
+			s_bsdipa_io_write_zstd, s_bsdipa_io_read_zstd,
+#else
+			NULL, NULL,
+#endif
+			s_BSDIPA_IO_ZSTD, s_BSDIPA_IO_NAME_ZSTD},
 };
 
 #if a_STATS
@@ -309,6 +322,9 @@ main(int argc, char *argv[]){
 #ifdef s__BSDIPA_XZ
 		struct s_bsdipa_io_cookie_xz cx;
 #endif
+#ifdef s__BSDIPA_ZSTD
+		struct s_bsdipa_io_cookie_zstd *cZ;
+#endif
 	} ioc;
 	union{
 		struct s_bsdipa_memory_ctx m;
@@ -329,7 +345,7 @@ main(int argc, char *argv[]){
 	f = a_NONE;
 	iop = NULL;
 
-	while((rv = getopt(argc, argv, "123456789fHhJjRz")) != -1)
+	while((rv = getopt(argc, argv, "123456789fHhJjRZz")) != -1)
 		switch(rv){
 		case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 			f |= a_IO_COOKIE;
@@ -341,6 +357,7 @@ main(int argc, char *argv[]){
 		case 'J': iop = &a_io_meths[s_BSDIPA_IO_XZ]; break;
 		case 'j': iop = &a_io_meths[s_BSDIPA_IO_BZ2]; break;
 		case 'R': iop = &a_io_meths[s_BSDIPA_IO_RAW]; break;
+		case 'Z': iop = &a_io_meths[s_BSDIPA_IO_ZSTD]; break;
 		case 'z': iop = &a_io_meths[s_BSDIPA_IO_ZLIB]; break;
 		default: goto jeuse;
 		}
@@ -615,12 +632,16 @@ jpsrch:
 		rv = a_EX_OK;
 
 jleave:
-	/* lots of teardown, most debug-optional */
+	/* lots of teardown, mostly debug-optional */
 #ifndef NDEBUG
 	if(f & a_IO_COOKIE){
 # ifdef s__BSDIPA_XZ
 		if(ioc.c.ioc_type == s_BSDIPA_IO_XZ)
 			s_bsdipa_io_cookie_gut_xz(&ioc.c);
+# endif
+# ifdef s__BSDIPA_ZSTD
+		if(ioc.c.ioc_type == s_BSDIPA_IO_ZSTD)
+			s_bsdipa_io_cookie_gut_zstd(&ioc.c);
 # endif
 		f ^= a_IO_COOKIE;
 	}
@@ -753,6 +774,11 @@ juse:
 #endif
 			"available)\n"
 		"-R  raw, uncompressed output (no checksum; for testing)\n"
+		"-Z  use ZSTD compression (libzstd; optional: "
+#ifndef s__BSDIPA_ZSTD
+			"NOT "
+#endif
+			"available)\n"
 		"-z  ZLIB compression (default)\n"
 		"\n"
 #ifdef s_BSDIPA_32

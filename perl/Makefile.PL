@@ -45,10 +45,22 @@ sub have_xz{
 	}
 }
 
+sub have_zstd{
+	if(system('make -f c-lib/ioconf.mk zstd') == 0){
+		print "Adding support for libzstd (ZSTD)\n";
+		$ADDCCF .= ' -Ds__BSDIPA_ZSTD=1 ';
+		$ADDLDF .= ' -lzstd '
+	}else{
+		print STDERR "! Cannot find zstd, skipping support for libzstd (ZSTD)\n";
+		$ADDCCF .= ' -Ds__BSDIPA_ZSTD=0 '
+	}
+}
+
 version_and_contact 'c-lib/configh.sh';
 system 'cd c-lib; ./configh.sh s_BSDIPA_32=y';
 have_bz2;
 have_xz;
+have_zstd;
 
 WriteMakefile(
 #	'OPTIMIZE' => '-g',
