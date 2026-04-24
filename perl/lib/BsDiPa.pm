@@ -139,6 +139,9 @@ C<$level> must be 0, or is cramped to within and including 1 and 9;
 the actual I/O layer maps this to a range meaning minimum to maximum.
 Only used if no dedicated I/O cookie is used (see below).
 Setting this is not multithread-safe.
+By default the strongest possible compression is used,
+unless its resource usage seems excessive (in comparison to the
+next weaker).
 
 =item C<core_diff_zlib($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0, $io_cookie=0)>
 

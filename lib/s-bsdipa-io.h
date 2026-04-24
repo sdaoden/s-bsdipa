@@ -15,6 +15,8 @@
  *@   is serialized, or serialized data is turned into a complete data set
  *@   that then can be fed into s_bsdipa_patch().
  *@   (A custom I/O (compression) layer may be less memory hungry.)
+ *@ - Layers default to the strongest possible compression, unless that is "excessive".
+ *@   (Note: s-bsdipa.c uses defaults, and needs (manual) adjustments on change.)
  *@
  *@ - s_BSDIPA_IO == s_BSDIPA_IO_BZ2 (-lbz2 (bzip2)):
  *@   -- s_BSDIPA_IO_BZ2_BLOCKSIZE may be defined (default 9).
@@ -25,7 +27,7 @@
  *@   -- no checksum.
  *@ - s_BSDIPA_IO == s_BSDIPA_IO_XZ (-llzma):
  *@   -- s_BSDIPA_IO_XZ_PRESET may be defined as the "preset" argument of
- *@      lzma_easy_encoder() (default 4).
+ *@      lzma_easy_encoder() (default 8).
  *@   -- s_BSDIPA_IO_XZ_CHECK may be defined as the "check" argument of
  *@      lzma_easy_encoder() (default is LZMA_CHECK_CRC32 for s_BSDIPA_32, and
  *@      LZMA_CHECK_CRC64 otherwise).
@@ -35,7 +37,8 @@
  *@   -- Checksum Adler-32 (what inflate() gives you).
  *@   -- Note: UINT_MAX is maximum allocation size! (XXX could "split" via n/size)
  *@ - s_BSDIPA_IO == s_BSDIPA_IO_ZSTD (-lzstd):
- *@   -- s_BSDIPA_IO_ZSTD_LEVEL may be defined as a zstd.h:ZSTD_c_compressionLevel (default: 19).
+ *@   -- s_BSDIPA_IO_ZSTD_LEVEL is *not* zstd.h:ZSTD_c_compressionLevel, but instead in our own
+ *@      scale 1..9, but then mapped accordingly.
  *@   -- s_BSDIPA_IO_ZSTD_CHECKSUM may be defined as 0 or 1 to dis-/enable ZSTD_c_checksumFlag
  *@      (default 1, meaning XXH64).
  *@ - The header may be included multiple times, shall multiple BSDIPA_IO
@@ -636,7 +639,7 @@ jdone:
 # include <lzma.h>
 
 # ifndef s_BSDIPA_IO_XZ_PRESET
-#  define s_BSDIPA_IO_XZ_PRESET 4
+#  define s_BSDIPA_IO_XZ_PRESET 8
 # endif
 # ifndef s_BSDIPA_IO_XZ_CHECK
 #  ifdef s_BSDIPA_32
@@ -1397,7 +1400,7 @@ jdone:
 # endif
 
 # ifndef s_BSDIPA_IO_ZSTD_LEVEL
-#  define s_BSDIPA_IO_ZSTD_LEVEL 19
+#  define s_BSDIPA_IO_ZSTD_LEVEL 8
 # endif
 # ifndef s_BSDIPA_IO_ZSTD_CHECKSUM
 #  define s_BSDIPA_IO_ZSTD_CHECKSUM 1
@@ -1453,8 +1456,7 @@ s__bsdipa_io_cookie_create_zstd(int xwrite, struct s_bsdipa_io_cookie *iocp, str
 		iocZp->iocZ_super.ioc_is_init = 1;
 		iocZp->iocZ_super.ioc_type = s_BSDIPA_IO_ZSTD;
 		if(iocZp->iocZ_super.ioc_level == 0)
-			iocZp->iocZ_super.ioc_level = ((s_BSDIPA_IO_ZSTD_LEVEL > 1) ?
-					(s_BSDIPA_IO_ZSTD_LEVEL / 2 < 10 ? s_BSDIPA_IO_ZSTD_LEVEL / 2 : 9) : 1);
+			iocZp->iocZ_super.ioc_level = s_BSDIPA_IO_ZSTD_LEVEL;
 		iocZp->iocZ_mctx = *mcp;
 		iocZp->iocZ_zcm.customAlloc = &s__bsdipa_io_zstd_alloc;
 		iocZp->iocZ_zcm.customFree = &s__bsdipa_io_zstd_free;

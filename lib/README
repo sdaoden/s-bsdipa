@@ -52,57 +52,98 @@ Contact: steffen at sdaoden dot eu.
 1. s-bsdipa example
 -------------------
 
-  $ file .A .B
-  .A: troff or preprocessor input, ASCII text
-  .B: troff or preprocessor input, ASCII text
+  $ file .1 .2
+  .1: troff or preprocessor input, ASCII text
+  .2: troff or preprocessor input, ASCII text
 
-  $ ll .A .B
-  -rw-r----- 1 steffen steffen 397962 Dec 19 00:34 .A
-  -rw-r----- 1 steffen steffen 428420 Dec 19 00:34 .B
+The manuals of S-nail, v14.9.25 vs v14.10.0-alpha.
 
-  $ for c in -z -J -j; do
+  $ ll .1 .2
+  -rw-r----- 1 steffen steffen 428420 Apr 24 19:36 .1
+  -rw-r----- 1 steffen steffen 390770 Apr 24 19:36 .2
+
+  $ for c in -J -j -Z -z; do
       for b in 32 64; do
         echo $b/$c
-        ./s-bsdipa$b $c diff .B .A .P$b$c
-        ./s-bsdipa$b patch .A .P$b$c .R$b$c
+        ./s-bsdipa$b $c -9 diff .2 .1 .P$b$c
+        ./s-bsdipa$b $c -f diff .2 .1 .P$b$c
+        ./s-bsdipa$b $c -f7 diff .2 .1 .P$b$c
+        ./s-bsdipa$b patch .1 .P$b$c .R$b$c
       done
     done
-  32/-z
-  # 71965 result bytes | 121 allocs: all=2734901 peek=2283441 curr=0
-  # Code 0:078 secs, ZLIB I/O 0:079 secs
-  # data: ctrl=54192 (4516 entries) diff=310890 extra=117530
-  # 428420 result bytes | 4 allocs: all=950961 peek=911033 curr=0
-  # Code 0:001 secs, ZLIB I/O 0:001 secs
-  64/-z
-  # 74426 result bytes | 121 allocs: all=4644533 peek=4138461 curr=0
-  # Code 0:079 secs, ZLIB I/O 0:140 secs
-  # data: ctrl=108384 (4516 entries) diff=310890 extra=117530
-  # 428420 result bytes | 4 allocs: all=1005153 peek=965225 curr=0
-  # Code 0:001 secs, ZLIB I/O 0:001 secs
+
   32/-J
-  # 62920 result bytes | 130 allocs: all=51830824 peek=49975804 curr=0
-  # Code 0:077 secs, XZ I/O 0:055 secs
-  # data: ctrl=54192 (4516 entries) diff=310890 extra=117530
-  # 428420 result bytes | 11 allocs: all=5140969 peek=4712436 curr=0
-  # Code 0:001 secs, XZ I/O 0:003 secs
+  # 57072 result bytes | 114 allocs: all=708315454 peek=706338602
+  # Code 0:065 secs, XZ I/O 0:083 secs
+  # 57072 result bytes | 114 allocs: all=389548350 peek=387571498
+  # Code 0:063 secs, XZ I/O 0:083 secs
+  # 57072 result bytes | 114 allocs: all=196610366 peek=194633514
+  # Code 0:062 secs, XZ I/O 0:068 secs
+  # 390770 result bytes | 11 allocs: all=17641129 peek=17250246
+  # Code 0:000 secs, XZ I/O 0:003 secs
   64/-J
-  # 64472 result bytes | 130 allocs: all=53740456 peek=50030416 curr=0
-  # Code 0:079 secs, XZ I/O 0:068 secs
-  # data: ctrl=108384 (4516 entries) diff=310890 extra=117530
-  # 428420 result bytes | 11 allocs: all=5195161 peek=4766628 curr=0
-  # Code 0:001 secs, XZ I/O 0:003 secs
+  # 57120 result bytes | 114 allocs: all=710339046 peek=706385342
+  # Code 0:068 secs, XZ I/O 0:105 secs
+  # 57120 result bytes | 114 allocs: all=391571942 peek=387618238
+  # Code 0:066 secs, XZ I/O 0:107 secs
+  # 57120 result bytes | 114 allocs: all=198633958 peek=194680254
+  # Code 0:067 secs, XZ I/O 0:091 secs
+  # 390770 result bytes | 11 allocs: all=17687869 peek=17296986
+  # Code 0:000 secs, XZ I/O 0:003 secs
   32/-j
-  # 64711 result bytes | 120 allocs: all=9984857 peek=8129837 curr=0
-  # Code 0:076 secs, BZ2 I/O 0:014 secs
-  # data: ctrl=54192 (4516 entries) diff=310890 extra=117530
-  # 428420 result bytes | 4 allocs: all=4575177 peek=4146756 curr=0
-  # Code 0:001 secs, BZ2 I/O 0:008 secs
+  # 58761 result bytes | 104 allocs: all=10060911 peek=8084059
+  # Code 0:063 secs, BZ2 I/O 0:012 secs
+  # 58761 result bytes | 104 allocs: all=10060911 peek=8084059
+  # Code 0:062 secs, BZ2 I/O 0:013 secs
+  # 58761 result bytes | 104 allocs: all=8460911 peek=6484059
+  # Code 0:062 secs, BZ2 I/O 0:013 secs
+  # 390770 result bytes | 4 allocs: all=3692425 peek=3301654
+  # Code 0:000 secs, BZ2 I/O 0:006 secs
   64/-j
-  # 64335 result bytes | 120 allocs: all=11894489 peek=8184449 curr=0
-  # Code 0:076 secs, BZ2 I/O 0:015 secs
-  # data: ctrl=108384 (4516 entries) diff=310890 extra=117530
-  # 428420 result bytes | 4 allocs: all=4629369 peek=4200948 curr=0
-  # Code 0:001 secs, BZ2 I/O 0:007 secs
+  # 58180 result bytes | 104 allocs: all=12084503 peek=8130799
+  # Code 0:068 secs, BZ2 I/O 0:013 secs
+  # 58180 result bytes | 104 allocs: all=12084503 peek=8130799
+  # Code 0:067 secs, BZ2 I/O 0:013 secs
+  # 58180 result bytes | 104 allocs: all=10484503 peek=6530799
+  # Code 0:067 secs, BZ2 I/O 0:013 secs
+  # 390770 result bytes | 4 allocs: all=3739165 peek=3348394
+  # Code 0:000 secs, BZ2 I/O 0:006 secs
+  32/-Z
+  # 60156 result bytes | 102 allocs: all=876613546 peek=874636694
+  # Code 0:063 secs, ZSTD I/O 0:566 secs
+  # 60428 result bytes | 102 allocs: all=96391082 peek=94414230
+  # Code 0:062 secs, ZSTD I/O 0:084 secs
+  # 61350 result bytes | 102 allocs: all=41220652 peek=39243800
+  # Code 0:062 secs, ZSTD I/O 0:035 secs
+  # 390770 result bytes | 4 allocs: all=5511857 peek=5121086
+  # Code 0:000 secs, ZSTD I/O 0:000 secs
+  64/-Z
+  # 61178 result bytes | 102 allocs: all=878637138 peek=874683434
+  # Code 0:069 secs, ZSTD I/O 0:584 secs
+  # 62233 result bytes | 102 allocs: all=98414674 peek=94460970
+  # Code 0:065 secs, ZSTD I/O 0:103 secs
+  # 62558 result bytes | 102 allocs: all=43244244 peek=39290540
+  # Code 0:067 secs, ZSTD I/O 0:047 secs
+  # 390770 result bytes | 4 allocs: all=5558597 peek=5167826
+  # Code 0:000 secs, ZSTD I/O 0:000 secs
+  32/-z
+  # 64391 result bytes | 105 allocs: all=2810971 peek=2367623
+  # Code 0:064 secs, ZLIB I/O 0:065 secs
+  # 64391 result bytes | 105 allocs: all=2810971 peek=2367623
+  # Code 0:062 secs, ZLIB I/O 0:064 secs
+  # 65835 result bytes | 105 allocs: all=2810971 peek=2367623
+  # Code 0:063 secs, ZLIB I/O 0:016 secs
+  # 390770 result bytes | 4 allocs: all=868209 peek=828281
+  # Code 0:000 secs, ZLIB I/O 0:001 secs
+  64/-z
+  # 66421 result bytes | 105 allocs: all=4834563 peek=4344475
+  # Code 0:069 secs, ZLIB I/O 0:119 secs
+  # 66421 result bytes | 105 allocs: all=4834563 peek=4344475
+  # Code 0:067 secs, ZLIB I/O 0:119 secs
+  # 68606 result bytes | 105 allocs: all=4834563 peek=4344475
+  # Code 0:067 secs, ZLIB I/O 0:015 secs
+  # 390770 result bytes | 4 allocs: all=914949 peek=875021
+  # Code 0:000 secs, ZLIB I/O 0:001 secs
 
 2. Releases
 -----------

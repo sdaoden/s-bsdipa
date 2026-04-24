@@ -80,7 +80,8 @@ but values outside the range 4 to 64 hardly seem useful.
 .
 .Bl -tag -compact -width ".It Fl BaNg"
 .It Fl 1 Ns \0\(em Fl 9
-Select compression level, with 1 being weakest and 9 being strongest.
+Select compression level,
+with 1 being weakest and 9 being strongest (default unless noted).
 Silently ignored if unsupported by the method.
 .It Fl f
 Overwrite an existing target file.
@@ -92,7 +93,8 @@ must be used in addition.
 .It Fl h
 Show usage information and exit.
 .It Fl J
-Use LZMA2 compression.
+Use LZMA2 compression (default:
+.Fl 8 ) .
 This is an optional feature.
 .It Fl j
 Use bzip2 compression.
@@ -100,7 +102,8 @@ This is an optional feature.
 .It Fl R
 Uncompressed patch format without checksum (for testing).
 .It Fl Z
-Use ZSTD compression.
+Use ZSTD compression (default:
+.Fl 8 ) .
 This is an optional feature.
 .It Fl z
 Use ZLIB compression (default).
