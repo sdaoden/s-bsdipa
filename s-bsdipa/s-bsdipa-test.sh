@@ -118,8 +118,8 @@ while [ $i -le 100 ]; do
 	echo "$ix" >> t2b.b
 
 	tx 2b -Rf '' $i
-	tx 2b -zf -9 $i
-	[ -n "$DPBZ2" ] && tx 2b -jf -9 $i
+	tx 2b -zf -4 $i
+	[ -n "$DPBZ2" ] && tx 2b -jf -4 $i
 	[ -n "$DPXZ" ] && tx 2b -Jf -4 $i
 	[ -n "$DPZSTD" ] && tx 2b -Zf -4 $i
 
@@ -230,10 +230,10 @@ if [ -f ../../lib/s-bsdiff.o ] && [ -f ../../lib/s-bspatch.o ]; then
 	eval $DD if=../../lib/s-bsdiff.o of=t6.b $REDIR
 	eval $DD if=../../lib/s-bspatch.o of=t6.a $REDIR
 	tx 6 -R
-	tx 6 -z
-	[ -n "$DPBZ2" ] && tx 6 -j -6
-	[ -n "$DPXZ" ] && tx 6 -J -6
-	[ -n "$DPZSTD" ] && tx 6 -Z -6
+	tx 6 -z -5
+	[ -n "$DPBZ2" ] && tx 6 -j -5
+	[ -n "$DPXZ" ] && tx 6 -J -5
+	[ -n "$DPZSTD" ] && tx 6 -Z -5
 else
 	echo >&2 'SKIP TESTS 6: cannot find my object files'
 fi
@@ -250,10 +250,10 @@ if [ -c /dev/urandom ]; then
 	eval $DD if=/dev/urandom bs=512 count=10 of=t8.a $REDIR
 	eval $DD if=/dev/urandom bs=768 count=10 of=t8.b $REDIR
 	tx 8 -R
-	tx 8 -z -9
-	[ -n "$DPBZ2" ] && tx 8 -j -9
-	[ -n "$DPXZ" ] && tx 8 -J -9
-	[ -n "$DPZSTD" ] && tx 8 -Z -9
+	tx 8 -z -6
+	[ -n "$DPBZ2" ] && tx 8 -j -6
+	[ -n "$DPXZ" ] && tx 8 -J -6
+	[ -n "$DPZSTD" ] && tx 8 -Z -6
 else
 	echo >&2 'SKIP TESTS 7,8: no /dev/urandom'
 fi

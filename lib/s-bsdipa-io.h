@@ -517,14 +517,14 @@ s_bsdipa_io_read_zlib(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie 
 	pcp->pc_restored_dat = NULL;
 	patlen = pcp->pc_patch_len;
 
-	/* make inflateEnd() callable */
+	/* make inflateEnd() callable; Without too much effort: we need to make available an entire frame */
 	zsp = &zs;
-	zs.next_in = (Bytef z_const*)(void*)pcp->pc_patch_dat;
-	zs.avail_in = (patlen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (uInt)patlen;
-	patlen -= zs.avail_in;
 	zs.zalloc = &s__bsdipa_io_zlib_alloc;
 	zs.zfree = &s__bsdipa_io_zlib_free;
 	zs.opaque = (void*)&pcp->pc_mem;
+
+	zs.next_in = (Bytef z_const*)(void*)pcp->pc_patch_dat;
+	zs.avail_in = (patlen >= INT32_MAX - 1) ? INT32_MAX - 1 : (uInt)patlen;
 
 	switch(inflateInit(zsp)){
 	case Z_OK: break;
@@ -575,6 +575,10 @@ s_bsdipa_io_read_zlib(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie 
 	zsp->next_out = pcp->pc_restored_dat;
 	zsp->avail_out = (reslen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (uInt)reslen;
 	reslen -= zsp->avail_out;
+
+	patlen -= (char const*)zsp->next_in - (char*)(void*)pcp->pc_patch_dat;
+	zsp->avail_in = (patlen > s__BSDIPA_IO_ZLIB_LIMIT) ? s__BSDIPA_IO_ZLIB_LIMIT : (uInt)patlen;
+	patlen -= zsp->avail_in;
 
 	for(;;){
 		int x, y;
@@ -925,9 +929,9 @@ s_bsdipa_io_read_xz(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *i
 	}else
 		zsp = s__bsdipa_io_cookie_create_xz(io_cookie_or_null, &pcp->pc_mem);
 
+	/* Without too much effort: we need to make available an entire frame */
 	zsp->next_in = pcp->pc_patch_dat;
-	zsp->avail_in = (patlen > s__BSDIPA_IO_XZ_LIMIT) ? s__BSDIPA_IO_XZ_LIMIT : (size_t)patlen;
-	patlen -= zsp->avail_in;
+	zsp->avail_in = (patlen >= INT32_MAX - 1) ? INT32_MAX - 1 : (size_t)patlen;
 
 	switch(lzma_stream_decoder(zsp, UINT64_MAX, 0
 #  ifdef LZMA_FAIL_FAST
@@ -979,6 +983,10 @@ s_bsdipa_io_read_xz(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *i
 	zsp->next_out = pcp->pc_restored_dat;
 	zsp->avail_out = (size_t)((reslen > s__BSDIPA_IO_XZ_LIMIT) ? s__BSDIPA_IO_XZ_LIMIT : reslen);
 	reslen -= zsp->avail_out;
+
+	patlen -= zsp->next_in - pcp->pc_patch_dat;
+	zsp->avail_in = (size_t)((patlen > s__BSDIPA_IO_XZ_LIMIT) ? s__BSDIPA_IO_XZ_LIMIT : patlen);
+	patlen -= zsp->avail_in;
 
 	for(;;){
 		lzma_ret y;
@@ -1275,9 +1283,9 @@ s_bsdipa_io_read_bz2(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *
 	bzs.bzfree = &s__bsdipa_io_bz2_free;
 	bzs.opaque = (void*)&pcp->pc_mem;
 
+	/* Without too much effort: we need to make available an entire frame */
 	bzs.next_in = (char*)(void*)pcp->pc_patch_dat;
-	bzs.avail_in = (patlen > s__BSDIPA_IO_BZ2_LIMIT) ? s__BSDIPA_IO_BZ2_LIMIT : (unsigned int)patlen;
-	patlen -= (unsigned int)bzs.avail_in;
+	bzs.avail_in = (patlen >= INT32_MAX - 1) ? INT32_MAX - 1 : (unsigned int)patlen;
 
 	switch(BZ2_bzDecompressInit(&bzs, s_BSDIPA_IO_BZ2_VERBOSITY, s_BSDIPA_IO_BZ2_SMALL)){
 	case BZ_OK: break;
@@ -1334,6 +1342,10 @@ s_bsdipa_io_read_bz2(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie *
 	bzs.next_out = (char*)pcp->pc_restored_dat;
 	bzs.avail_out = (reslen > s__BSDIPA_IO_BZ2_LIMIT) ? s__BSDIPA_IO_BZ2_LIMIT : (unsigned int)reslen;
 	reslen -= bzs.avail_out;
+
+	patlen -= bzs.next_in - (char const*)pcp->pc_patch_dat;
+	bzs.avail_in = (patlen > s__BSDIPA_IO_BZ2_LIMIT) ? s__BSDIPA_IO_BZ2_LIMIT : (unsigned int)patlen;
+	patlen -= (unsigned int)bzs.avail_in;
 
 	for(;;){
 		int x, y;
@@ -1721,11 +1733,6 @@ s_bsdipa_io_read_zstd(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie 
 	if(rv != s_BSDIPA_OK)
 		goto jdone;
 
-	zib.src = pcp->pc_patch_dat;
-	zib.size = (patlen > s__BSDIPA_IO_ZSTD_LIMIT) ? s__BSDIPA_IO_ZSTD_LIMIT : (size_t)patlen;
-	patlen -= zib.size;
-	zib.pos = 0;
-
 	/* Read bsdipa_header */
 	/* C99 */{
 		size_t y;
@@ -1733,6 +1740,11 @@ s_bsdipa_io_read_zstd(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie 
 		zob.dst = hbuf;
 		zob.size = sizeof(hbuf);
 		zob.pos = 0;
+
+		/* Without too much effort: we need to make available an entire frame */
+		zib.src = pcp->pc_patch_dat;
+		zib.size = (size_t)patlen;
+		zib.pos = 0;
 
 		y = ZSTD_decompressStream(((struct s_bsdipa_io_cookie_zstd*)io_cookie_or_null)->iocZ_zdp, &zob, &zib);
 		if(y != 0 && ZSTD_isError(y)){
@@ -1747,10 +1759,6 @@ s_bsdipa_io_read_zstd(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie 
 			rv = s_BSDIPA_INVAL;
 			goto jdone;
 		}
-
-		zib.src = &((char*)zib.src)[zib.pos];
-		zib.size -= zib.pos;
-		zib.pos = 0;
 	}
 
 	rv = s_bsdipa_patch_parse_header(&pcp->pc_header, hbuf);
@@ -1775,12 +1783,22 @@ s_bsdipa_io_read_zstd(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie 
 	}
 
 	zob.dst = pcp->pc_restored_dat;
-	zob.size = (size_t)((reslen > s__BSDIPA_IO_ZSTD_LIMIT) ? s__BSDIPA_IO_ZSTD_LIMIT : reslen);
-	reslen -= zob.size;
-	zob.pos = 0;
 
-	if(zib.size > 0) for(;;){
+	zib.src = &((char const*)zib.src)[zib.pos];
+	patlen -= zib.pos;
+	zib.pos = 0;
+
+	if(patlen > 0) for(;;){
 		size_t y;
+
+		zob.size = (size_t)((reslen > s__BSDIPA_IO_ZSTD_LIMIT) ? s__BSDIPA_IO_ZSTD_LIMIT : reslen);
+		reslen -= (s_bsdipa_off_t)zob.size;
+		zob.pos = 0;
+
+		zib.src = &((char*)zib.src)[zib.pos];
+		zib.size = (size_t)((patlen > s__BSDIPA_IO_ZSTD_LIMIT) ? s__BSDIPA_IO_ZSTD_LIMIT : patlen);
+		patlen -= zib.size;
+		zib.pos = 0;
 
 		y = ZSTD_decompressStream(((struct s_bsdipa_io_cookie_zstd*)io_cookie_or_null)->iocZ_zdp, &zob, &zib);
 		if(y != 0 && ZSTD_isError(y)){
@@ -1791,19 +1809,16 @@ s_bsdipa_io_read_zstd(struct s_bsdipa_patch_ctx *pcp, struct s_bsdipa_io_cookie 
 			goto jdone;
 		}
 
-		if(zob.pos == zob.size){
-			zob.dst = &((char*)zob.dst)[zob.size];
-			zob.size = (size_t)((reslen > s__BSDIPA_IO_ZSTD_LIMIT) ? s__BSDIPA_IO_ZSTD_LIMIT : reslen);
-			reslen -= (s_bsdipa_off_t)zob.size;
-			zob.pos = 0;
+		if(zob.pos > 0){
+			zob.dst = &((char*)zob.dst)[zob.pos];
+			zob.size -= zob.pos;
 		}
-		if(zib.pos == zib.size){
-			zib.src = &((char*)zib.src)[zib.pos];
-			zib.size = (size_t)((patlen > s__BSDIPA_IO_ZSTD_LIMIT) ? s__BSDIPA_IO_ZSTD_LIMIT : patlen);
-			if(zib.size == 0 && y == 0)
-				break;
-			zib.pos = 0;
-		}
+		reslen += zob.size;
+
+		zib.size -= zib.pos;
+		if(y == 0 && patlen == 0 && zib.size == 0)
+			break;
+		patlen += zib.size;
 	}
 
 jdone:
