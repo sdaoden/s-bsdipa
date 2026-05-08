@@ -106,6 +106,10 @@ s_bsdipa_patch_parse_header(struct s_bsdipa_header *hp, uint8_t const *dat){
 	x = a_bspatch_xin(dat);
 	if(x < 0)
 		goto jleave;
+	if(x & (sizeof(s_bsdipa_off_t) - 1))
+		goto jleave;
+	if(x % (sizeof(s_bsdipa_off_t) * 3))
+		goto jleave;
 	y = x; /* If we generated the header, data *plus* control block fits in _OFF_MAX! */
 	hp->h_ctrl_len = x;
 	dat += sizeof(x);
