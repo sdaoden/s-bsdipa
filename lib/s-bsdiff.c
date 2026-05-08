@@ -253,7 +253,7 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 		ccpp = NULL;
 		ccp = NULL; /* xxx UNINIT() */
 		ctrlno = 0; /* xxx UNINIT() */
-		ctrl_len_max = s_BSDIPA_OFF_MAX - beflen - ((s_bsdipa_off_t)sizeof(s_bsdipa_off_t) * 3) - 1;
+		ctrl_len_max = s_BSDIPA_OFF_MAX - beflen - 1;
 		scan = len = pos = lastscan = lastpos = lastoff = super_pos = 0;
 
 		/* a_bsdiff_search() is called with aftlen-a_BSDIPA_DIVSUFSORT, so bypass algorithm as such, then */
@@ -285,11 +285,6 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 					lenf = lenb = 0;
 					j = scan = beflen;
 					goto j_aftlen0_bypass;
-				}
-
-				if(dcp->dc_ctrl_len >= ctrl_len_max){
-					rv = s_BSDIPA_FBIG;
-					goto jdone;
 				}
 
 				s = Sf = lenf = 0;
@@ -389,6 +384,10 @@ j_aftlen0_bypass:
 						ccp->cc_len += sizeof(s_bsdipa_off_t);
 					need_dump = 1;
 					dcp->dc_ctrl_len += sizeof(s_bsdipa_off_t) * 3;
+					if(dcp->dc_ctrl_len > ctrl_len_max){
+						rv = s_BSDIPA_FBIG;
+						goto jdone;
+					}
 				}
 
 				super_pos += (pos - lenb) - (lastpos + lenf);
