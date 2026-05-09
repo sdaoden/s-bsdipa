@@ -67,22 +67,20 @@ When applying a
 .Ar patch
 the compression method is automatically detected,
 an explicitly given one must match.
-When creating a difference patch the
-.Ar diff/WINDOW
-variant allows to specify the
+When creating a differential patch the optional
+.Ar WINDOW
+allows specification of the
 .Dq data inspection window size ,
-a positive integral value \[<=]4096,
-which defaults to 16 and has impacts on processing speed and patch size;
-its' applicability depends on the data,
-but values outside the range 4 to 64 hardly seem useful.
+a positive integral value \[<=]4096 that defaults to 16,
+and has impacts on processing speed and patch size.
+(Values outside the range 4 to 64 seem hardly useful.)
 .
 .Ss "Options"
 .
 .Bl -tag -compact -width ".It Fl BaNg"
 .It Fl 1 Ns \0\(em Fl 9
-Select compression level,
+Selects the compression level when supported,
 with 1 being weakest and 9 being strongest (default unless noted).
-Silently ignored if unsupported by the method.
 .It Fl f
 Overwrite an existing target file.
 .It Fl H
@@ -95,16 +93,16 @@ Show usage information and exit.
 .It Fl J
 Use LZMA2 compression (default:
 .Fl 8 ) .
-This is an optional feature.
+(Optional feature.)
 .It Fl j
 Use bzip2 compression.
-This is an optional feature.
+(Optional feature.)
 .It Fl R
 Uncompressed patch format without checksum (for testing).
 .It Fl Z
 Use ZSTD compression (default:
 .Fl 8 ) .
-This is an optional feature.
+(Optional feature.)
 .It Fl z
 Use ZLIB compression (default).
 .El
