@@ -17,8 +17,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* Say 0 to disable */
+/* Say 0 to disable (sub-divived via NDEBUG) */
 #define a_STATS 1
+
+/* Only for development (and !NDEBUG): show all control triples */
+#define a_STATS_CTL 0
 
 #define _POSIX_C_SOURCE 202405L
 #define _GNU_SOURCE 1
@@ -671,13 +674,6 @@ jleave:
 	}
 
 #ifndef NDEBUG
-	if(f & a_FREE_CTX){
-		if(inbef != NULL)
-			s_bsdipa_diff_free(&c.d);
-		else
-			s_bsdipa_patch_free(&c.p);
-	}
-
 	if(f & a_UNMAP_2ND){
 		void *vp;
 		size_t vl;
@@ -735,12 +731,51 @@ jleave:
 
 			x = (long)(c.d.dc_ctrl_len / sizeof(struct s_bsdipa_ctrl_triple));
 			fprintf(stderr, "# data: ctrl=%ld (%ld entr%s) diff=%ld extra=%ld\n",
-				(long int)c.d.dc_ctrl_len, x, (x == 1 ? "y" : "ies"),
-				(long int)c.d.dc_diff_len, (long int)c.d.dc_extra_len);
+				(long)c.d.dc_ctrl_len, x, (x == 1 ? "y" : "ies"),
+				(long)c.d.dc_diff_len, (long)c.d.dc_extra_len);
+#  if a_STATS_CTL
+			if(c.d.dc_ctrl_len > 0){
+				struct s_bsdipa_ctrl_chunk *ccp;
+
+				x = 0;
+				s_BSDIPA_DIFF_CTX_FOREACH_CTRL(&c.d, ccp){
+					uint8_t const *ctp;
+					long y, l;
+
+					y = (long)(ccp->cc_len / sizeof(struct s_bsdipa_ctrl_triple));
+
+					fprintf(stderr, "## ctrl_chunk %p: %ld bytes -> %ld triples\n## ",
+						(void*)ccp, (long)ccp->cc_len, y);
+
+					l = 3;
+					for(ctp = ccp->cc_dat; y-- != 0; ctp += sizeof(struct s_bsdipa_ctrl_triple)){
+						s_bsdipa_off_t dl, el, sb;
+
+						dl = s_bsdipa_buf_to_i(&ctp[0]);
+						el = s_bsdipa_buf_to_i(&ctp[sizeof(s_bsdipa_off_t)]);
+						sb = s_bsdipa_buf_to_i(&ctp[2 * sizeof(s_bsdipa_off_t)]);
+						l += fprintf(stderr, "[%ld] %ld %ld %ld ",
+							++x, (long)dl, (long)el, (long)sb);
+						if(l > 80-30){
+							fprintf(stderr, "\n## ");
+							l = 3;
+						}
+					}
+					fprintf(stderr, "\n");
+				}
+			}
+#  endif /* a_STATS_CTL */
 		}
-# endif
+# endif /* !NDEBUG */
 	}
 #endif /* a_STATS */
+
+	if(f & a_FREE_CTX){
+		if(inbef != NULL)
+			s_bsdipa_diff_free(&c.d);
+		else
+			s_bsdipa_patch_free(&c.p);
+	}
 
 	return rv;
 jeuse:
