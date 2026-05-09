@@ -4,7 +4,7 @@
 : ${KEEP_TESTS:=}
 : ${PEBCAK:=} # some more output
 : ${REDIR:='>/dev/null 2>/dev/null'}
-: ${REDIROK:=} #'>/dev/null 2>/dev/null'}
+: ${REDIROK:='>/dev/null 2>/dev/null'}
 
 : ${DP:=../s-bsdipa}
 : ${DP32:=}
@@ -40,16 +40,23 @@ trap 'exit 1' HUP INT TERM
 cd ./.test || exit 2
 TNO=0
 
+_yn() {
+	TNO=$((TNO + 1))
+	if [ -z "$REDIROK" ]; then
+		eval echo ok $2 $REDIROK
+	elif [ $((TNO % 100)) -eq 0 ]; then
+		printf '\r.. running tests .. '$TNO' '
+	fi
+}
+
 y() {
 	[ $1 -eq 0 ] || { echo >&2 'bad '$2': '$1; exit 1; }
-	eval echo ok $2 $REDIROK
-	TNO=$((TNO + 1))
+	_yn
 }
 
 n() {
 	[ $1 -ne 0 ] || { echo >&2 'bad '$2': '$1; exit 1; }
-	eval echo ok $2 $REDIROK
-	TNO=$((TNO + 1))
+	_yn
 }
 
 tx() {
@@ -309,6 +316,7 @@ while [ $i -le 9 ]; do
 	i=$((i + 1))
 done
 
+[ -n "$REDIROK" ] && echo
 echo 'Ran '$TNO' tests'
 )
 exit $?
