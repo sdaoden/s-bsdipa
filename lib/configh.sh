@@ -18,6 +18,7 @@ done
 		echo '#define s_BSDIPA_MAGIC_WINDOW '"$s_BSDIPA_MAGIC_WINDOW" ||
 		echo '#undef s_BSDIPA_MAGIC_WINDOW'
 	[ -n "$s_BSDIPA_SMALL" ] && echo '#define s_BSDIPA_SMALL' || echo '#undef s_BSDIPA_SMALL'
+	[ -n "$s_BSDIPA_TEXT" ] && echo '#define s_BSDIPA_TEXT' || echo '#undef s_BSDIPA_TEXT'
 	echo '#endif'
 } > ./s-bsdipa-config.h
 

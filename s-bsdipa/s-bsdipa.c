@@ -21,7 +21,7 @@
 #define a_STATS 1
 
 /* Only for development (and !NDEBUG): show all control triples */
-#define a_STATS_CTL 0
+#define a_STATS_CTL 1
 
 #define _POSIX_C_SOURCE 202405L
 #define _GNU_SOURCE 1
@@ -30,7 +30,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -345,10 +344,14 @@ main(int argc, char *argv[]){
 	pfp = NULL;
 
 	/* getopt */
+	c.m.mc_alloc = &a_alloc;
+	c.m.mc_free = &a_free;
+	c.d.dc_text_mode = 0;
+
 	f = a_NONE;
 	iop = NULL;
 
-	while((rv = getopt(argc, argv, "123456789fHhJjRZz")) != -1)
+	while((rv = getopt(argc, argv, "123456789fHhJjRtZz")) != -1)
 		switch(rv){
 		case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 			f |= a_IO_COOKIE;
@@ -360,6 +363,7 @@ main(int argc, char *argv[]){
 		case 'J': iop = &a_io_meths[s_BSDIPA_IO_XZ]; break;
 		case 'j': iop = &a_io_meths[s_BSDIPA_IO_BZ2]; break;
 		case 'R': iop = &a_io_meths[s_BSDIPA_IO_RAW]; break;
+		case 't': c.d.dc_text_mode = 1; break;
 		case 'Z': iop = &a_io_meths[s_BSDIPA_IO_ZSTD]; break;
 		case 'z': iop = &a_io_meths[s_BSDIPA_IO_ZLIB]; break;
 		default: goto jeuse;
@@ -390,15 +394,14 @@ main(int argc, char *argv[]){
 		goto jeuse;
 
 	/* operation option */
-	c.m.mc_alloc = &a_alloc;
-	c.m.mc_free = &a_free;
-
 	rv = a_EX_DATAERR;
 
 	targetname = argv[0];
 	if(!strcmp(targetname, "patch")){
-		/* No compression level */
+		/* No compression level, no text mode */
 		if(f & a_IO_COOKIE)
+			goto jeuse;
+		if(c.d.dc_text_mode)
 			goto jeuse;
 
 		targetname = "restored";
@@ -410,11 +413,17 @@ main(int argc, char *argv[]){
 		inaft = argv[2];
 		inpat = NULL;
 
-		if(!strcmp(targetname, "diff"))
+		if(!strcmp(targetname, "diff")){
 			c.d.dc_magic_window = 0;
-		else if(!strncmp(targetname, "diff/", sizeof("diff/") -1)){
+#ifdef s_BSDIPA_TEXT
+			c.d.dc_hash = NULL;
+#endif
+		}else if(!strncmp(targetname, "diff/", sizeof("diff/") -1)){
 			char *ep;
 			long l;
+
+			if(c.d.dc_text_mode)
+				goto jeuse;
 
 			targetname += sizeof("diff/") -1;
 			l = strtol(targetname, &ep, 10);
@@ -784,12 +793,12 @@ juse:
 	fprintf((rv == a_EX_OK ? stdout : stderr),
 		a_NAME " (" s_BSDIPA_VERSION "): create or apply binary difference patch\n"
 		"\n"
-		"  " a_NAME a_NAME_BITS " [-fHJjRZz]    patch      after  patch restored\n"
-		"  " a_NAME a_NAME_BITS " [-fHJjRZz1-9] diff[/WIN] before after patch\n"
+		"  " a_NAME a_NAME_BITS " [-fHJjRZz]     patch      after  patch restored\n"
+		"  " a_NAME a_NAME_BITS " [-fHJjRtZz1-9] diff[/WIN] before after patch\n"
 		"\n"
 		"The first uses \"patch\" to create \"restored\" from \"after\";\n"
 		"if a compression method is given, it must match the detected one.\n"
-		"The latter creates \"patch\" from the difference of \"after\" and \"before\";\n"
+		"The latter creates \"patch\" from \"BSDiff\"erence of \"after\" and \"before\";\n"
 		"without \"magic WIN(dow)\" (positive number <= 4096) a built-in default is used.\n"
 		"\n"
 		"-1  (weakest) to -9 (strongest) selects compression level (or is ignored)\n"
@@ -807,6 +816,12 @@ juse:
 #endif
 			"available)\n"
 		"-R  raw, uncompressed output (no checksum; for testing)\n"
+		"-t  textual line-based not BSDiff mode (/WIN unsupported; optional: "
+#ifndef s_BSDIPA_TEXT
+			"NOT "
+#endif
+			"available)\n"
+
 		"-Z  use ZSTD compression (libzstd; optional: "
 #ifndef s__BSDIPA_ZSTD
 			"NOT "

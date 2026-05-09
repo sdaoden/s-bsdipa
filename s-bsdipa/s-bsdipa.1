@@ -1,6 +1,6 @@
 .\"@ s-bsdipa - create or apply binary difference patch.
 .
-.Dd May 9, 2026
+.Dd May 18, 2026
 .ds VV \\%v0.9.1
 .ds XX \\%S-BSDIPA
 .ds Xx \\%S-bsdipa
@@ -32,7 +32,7 @@
 .
 .Pp
 .Nm \*(xX
-.Op Fl fHJjRZz1-9
+.Op Fl fHJjRtZz1-9
 .Ar diff Ns Op /WINDOW
 .Ar before
 .Ar after
@@ -91,18 +91,27 @@ must be used in addition.
 .It Fl h
 Show usage information and exit.
 .It Fl J
+(Optional)
 Use LZMA2 compression (default:
 .Fl 8 ) .
-(Optional feature.)
 .It Fl j
+(Optional)
 Use bzip2 compression.
-(Optional feature.)
 .It Fl R
 Uncompressed patch format without checksum (for testing).
+.It Fl t
+(Optional)
+Use (textual) line-based instead of (binary) BSDiff mode;
+.Ar WINDOW
+is unsupported.
+.Sy Note:
+this mode is not designed to work with malicious data,
+there is no protection against "algorithmic complexity attacks";
+the output is, however, reproducible, just like the BSDiff one.
 .It Fl Z
+(Optional)
 Use ZSTD compression (default:
 .Fl 8 ) .
-(Optional feature.)
 .It Fl z
 Use ZLIB compression (default).
 .El

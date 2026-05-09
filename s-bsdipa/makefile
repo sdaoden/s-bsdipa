@@ -54,6 +54,7 @@ $(PROG): $(SRC) ../lib/s-bsdipa-io.h $(LIB)
 all: $(PROG)
 test: all
 	DP32=$(s_BSDIPA_32) \
+	DPTEXT=$(s_BSDIPA_TEXT) \
 	DPBZ2=$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" bz2 >/dev/null 2>&1 && echo y) \
 	DPXZ=$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" xz >/dev/null 2>&1 && echo y) \
 	DPZSTD=$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" zstd >/dev/null 2>&1 && echo y) \

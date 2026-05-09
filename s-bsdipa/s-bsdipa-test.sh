@@ -8,6 +8,7 @@
 
 : ${DP:=../s-bsdipa}
 : ${DP32:=}
+: ${DPTEXT:=}
 : ${DPBZ2:=}
 : ${DPXZ:=}
 : ${DPZSTD:=}
@@ -59,36 +60,41 @@ n() {
 	_yn "$2"
 }
 
+NOTXT=
 tx() {
-	eval $DP $2 $3 diff t$1.b t$1.a t$1.$2.p $REDIR
-	y $? $1.$2.1
+	t__x() {
+		eval $DP $t $2 $3 diff t$1.b t$1.a t$1$t.$2.p $REDIR
+		y $? $1$t.$2.1
 
-	eval $DP patch t$1.a t$1.$2.p t$1.$2.r$4 $REDIR
-	y $? $1.$2.2
-	eval cmp t$1.b t$1.$2.r$4 $REDIR
-	y $? $1.$2.3
+		eval $DP patch t$1.a t$1$t.$2.p t$1$t.$2.r$4 $REDIR
+		y $? $1$t.$2.2
+		eval cmp t$1.b t$1$t.$2.r$4 $REDIR
+		y $? $1$t.$2.3
 
-	eval $DP -f $2 patch t$1.a t$1.$2.p t$1.$2.r$4 $REDIR
-	y $? $1.$2.4
-	eval cmp t$1.b t$1.$2.r$4 $REDIR
-	y $? $1.$2.5
+		eval $DP -f $2 patch t$1.a t$1$t.$2.p t$1$t.$2.r$4 $REDIR
+		y $? $1$t.$2.4
+		eval cmp t$1.b t$1$t.$2.r$4 $REDIR
+		y $? $1$t.$2.5
 
-	# -H
-	eval $DP $2 $3 -H diff t$1.b t$1.a t$1.$2.pH $REDIR
-	y $? $1.$2.6
+		# -H
+		eval $DP $t $2 $3 -H diff t$1.b t$1.a t$1$t.$2.pH $REDIR
+		y $? $1$t.$2.6
 
-	eval $DP $2 -H patch t$1.a t$1.$2.pH t$1.$2.rH$4 $REDIR
-	y $? $1.$2.7
-	eval cmp t$1.b t$1.$2.rH$4 $REDIR
-	y $? $1.$2.8
+		eval $DP $2 -H patch t$1.a t$1$t.$2.pH t$1$t.$2.rH$4 $REDIR
+		y $? $1$t.$2.7
+		eval cmp t$1.b t$1$t.$2.rH$4 $REDIR
+		y $? $1$t.$2.8
 
-	eval $DP -Hf $2 patch t$1.a t$1.$2.pH t$1.$2.rH$4 $REDIR
-	y $? $1.$2.9
-	eval cmp t$1.b t$1.$2.rH$4 $REDIR
-	y $? $1.$2.10
+		eval $DP -Hf $2 patch t$1.a t$1$t.$2.pH t$1$t.$2.rH$4 $REDIR
+		y $? $1$t.$2.9
+		eval cmp t$1.b t$1$t.$2.rH$4 $REDIR
+		y $? $1$t.$2.10
 
-	eval cmp t$1.$2.p t$1.$2.pH $REDIR
-	n $? $1.$2.11
+		eval cmp t$1$t.$2.p t$1$t.$2.pH $REDIR
+		n $? $1$t.$2.11
+	}
+	t= t__x "$@"
+	[ -n "$DPTEXT" ] && [ -z "$NOTXT" ] && t=-t t__x "$@"
 }
 
 > t1.b
@@ -223,7 +229,7 @@ tx 4f -z
 [ -n "$DPXZ" ] && tx 4f -J
 [ -n "$DPZSTD" ] && tx 4f -Z
 
-# Note: t100 may use t5 tests
+# Note: t100 uses t5 tests
 (echo 0; $SEQ 100; echo 1; $SEQ 100; echo 2; $SEQ 100; echo 4; $SEQ 100) > t5.b
 (echo 1; $SEQ 100; echo 2; $SEQ 100; echo 3; $SEQ 100; echo 5) > t5.a
 tx 5 -R
@@ -232,8 +238,9 @@ tx 5 -z
 [ -n "$DPXZ" ] && tx 5 -J
 [ -n "$DPZSTD" ] && tx 5 -Z
 
-# Note: t100 may use t6 tests
 if [ -f ../../lib/s-bsdiff.o ] && [ -f ../../lib/s-bspatch.o ]; then
+	NOTXT=y
+
 	eval $DD if=../../lib/s-bsdiff.o of=t6.b $REDIR
 	eval $DD if=../../lib/s-bspatch.o of=t6.a $REDIR
 	tx 6 -R
@@ -241,11 +248,15 @@ if [ -f ../../lib/s-bsdiff.o ] && [ -f ../../lib/s-bspatch.o ]; then
 	[ -n "$DPBZ2" ] && tx 6 -j -5
 	[ -n "$DPXZ" ] && tx 6 -J -5
 	[ -n "$DPZSTD" ] && tx 6 -Z -5
+
+	NOTXT=
 else
 	echo >&2 'SKIP TESTS 6: cannot find my object files'
 fi
 
 if [ -c /dev/urandom ]; then
+	NOTXT=y
+
 	eval $DD if=/dev/urandom bs=512 count=1 of=t7.b $REDIR
 	eval $DD if=/dev/urandom bs=768 count=1 of=t7.a $REDIR
 	tx 7 -R
@@ -261,6 +272,8 @@ if [ -c /dev/urandom ]; then
 	[ -n "$DPBZ2" ] && tx 8 -j -6
 	[ -n "$DPXZ" ] && tx 8 -J -6
 	[ -n "$DPZSTD" ] && tx 8 -Z -6
+
+	NOTXT=
 else
 	echo >&2 'SKIP TESTS 7,8: no /dev/urandom'
 fi
@@ -302,8 +315,8 @@ while [ $i -le 1000 ]; do
 	i=$ix
 done
 
-# Try -1 .. -9; uses t5 or t6 tests
-[ -f t6.a ] && i=6 || i=5
+# Try -1 .. -9; uses t5 tests
+i=5
 $DD if=t$i.b of=t100.a >/dev/null 2>&1
 $DD if=t$i.a of=t100.b >/dev/null 2>&1
 i=1
