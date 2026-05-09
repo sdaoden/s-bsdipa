@@ -237,7 +237,7 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 		if(aftlen != 0 && beflen != 0){
 #ifndef s_BSDIPA_SMALL
 			/* Limit is "a bit arbitrary", and surely also depends on memory cache performance etc */
-			if(aftlen > 4096l * 25){
+			if(aftlen > 4096 * 25){
 				/* divsufsort(): effectively only ENOMEM */
 				if(divsufsort(aftdat, Ip, aftlen, dcp))
 					goto jdone;
@@ -347,6 +347,7 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 
 				j = (scan - lenb) - (lastscan + lenf);
 j_aftlen0_bypass:
+				isneq |= (j > 0);
 				for(i = 0; i < j; ++i)
 					*extrap++ = befdat[lastscan + lenf + i];
 				dcp->dc_extra_len += j;
