@@ -7,6 +7,7 @@ RM ?= rm
 SEQ ?= seq
 
 PROG = s-bsdipa
+LIB = ../lib/libsbsdipa.a
 
 # smake predefines this (cannot handle # in variables)
 NUMBER_SIGN?=\#
@@ -41,14 +42,14 @@ CFLAGS += $(SUFLVLC) $(s_BSDIPA_CFLAGS) -I../lib \
 	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" xz >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_XZ) \
 	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" zstd >/dev/null 2>&1 && printf '%s' -Ds__BSDIPA_ZSTD) \
 
-LIBS = ../lib/libsbsdipa.a -lz \
+LIBS = $(LIB) -lz \
 	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" bz2 >/dev/null 2>&1 && printf '%s' -lbz2) \
 	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" xz >/dev/null 2>&1 && printf '%s' -llzma) \
 	$$($(MAKE) -f ../lib/ioconf.mk RM="$(RM)" zstd >/dev/null 2>&1 && printf '%s' -lzstd) \
 
 SRC = $(PROG).c
 
-$(PROG): $(SRC) ../lib/s-bsdipa-io.h
+$(PROG): $(SRC) ../lib/s-bsdipa-io.h $(LIB)
 	$(CC) $(CFLAGS) -o $(@) $(SRC) $(LIBS)
 all: $(PROG)
 test: all
