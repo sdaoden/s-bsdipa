@@ -256,7 +256,7 @@ s_bsdipa_diff(struct s_bsdipa_diff_ctx *dcp){
 		ctrl_len_max = s_BSDIPA_OFF_MAX - beflen - 1;
 		scan = len = pos = lastscan = lastpos = lastoff = super_pos = 0;
 
-		/* a_bsdiff_search() is called with aftlen-a_BSDIPA_DIVSUFSORT, so bypass algorithm as such, then */
+		/* a_bsdiff_search() is called with aftlen-1, so bypass algorithm as such, then */
 		if(aftlen == 0)
 			goto Jaftlen0_bypass;
 
