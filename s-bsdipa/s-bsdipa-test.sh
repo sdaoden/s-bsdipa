@@ -44,19 +44,19 @@ _yn() {
 	TNO=$((TNO + 1))
 	if [ -z "$REDIROK" ]; then
 		eval echo ok $2 $REDIROK
-	elif [ $((TNO % 100)) -eq 0 ]; then
-		printf '\r.. running tests .. '$TNO' '
+	elif [ "$((TNO % 100))" -eq 0 ]; then
+		printf '\r.. running tests .. '"$TNO "
 	fi
 }
 
 y() {
-	[ $1 -eq 0 ] || { echo >&2 'bad '$2': '$1; exit 1; }
-	_yn
+	[ "$1" -eq 0 ] || { echo >&2 'bad '"$2"': '"$1"; exit 1; }
+	_yn "$2"
 }
 
 n() {
-	[ $1 -ne 0 ] || { echo >&2 'bad '$2': '$1; exit 1; }
-	_yn
+	[ "$1" -ne 0 ] || { echo >&2 'bad '"$2"': '"$1"; exit 1; }
+	_yn "$2"
 }
 
 tx() {
