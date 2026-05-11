@@ -19,8 +19,8 @@ create or apply binary difference patch.  In general:
 - In general the lib/ directory of the source repository is self-
   contained, and may be copied for inclusion in other projects.
 
-  If the s_BSDIPA_SMALL approach is taken, lib/libdivsufsort/ and
-  lib/divsufsort.h may also be removed.
+  If the s_BSDIPA_SMALL approach is taken the directory
+  lib/libdivsufsort may also be removed.
 
 - Please see the introductional header comments of s-bsdipa-lib.h and
   s-bsdipa-io.h for more.

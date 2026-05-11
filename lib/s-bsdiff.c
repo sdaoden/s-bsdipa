@@ -37,7 +37,7 @@
 
 #ifndef s_BSDIPA_SMALL
 # define DIVSUFSORT_API static
-# include "divsufsort.h"
+# include "libdivsufsort/divsufsort.h"
 #endif
 
 /* Number of control block instances per s_bsdipa_ctrl_chunk */

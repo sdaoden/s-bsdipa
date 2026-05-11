@@ -1,6 +1,7 @@
 /*
  * divsufsort.h for libdivsufsort
  * Copyright (c) 2003-2008 Yuta Mori All Rights Reserved.
+ * (Adjusted to fit in s-bsdipa needs, and not require cmake.)
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
