@@ -15,7 +15,7 @@
 #@
 #@ Examples:
 #@	CFLAGS='-O1 -DNDEBUG' make s_BSDIPA_32=y s_BSDIPA_CFLAGS='$(SUFX)' all
-#@	CFLAGS='-O2 -DNDEBUG' make s_BSDIPA_SMALL=y s_BSDIPA_TEST=y test
+#@	CFLAGS='-O2 -DNDEBUG' make s_BSDIPA_SMALL=y s_BSDIPA_TEXT=y test
 
 RM ?= rm
 

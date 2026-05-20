@@ -85,7 +85,7 @@ differential data).
 
 =over
 
-=item C<VERSION> (string, eg, '0.9.1')
+=item C<VERSION> (string, eg, '0.10.0')
 
 A version string.
 

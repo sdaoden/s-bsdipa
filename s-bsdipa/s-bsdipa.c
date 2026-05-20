@@ -21,8 +21,9 @@
 #define a_STATS 1
 
 /* Only for development (and !NDEBUG): show all control triples */
-#define a_STATS_CTL 1
+#define a_STATS_CTL 0
 
+/* ("To make it [simply] work") */
 #define _POSIX_C_SOURCE 202405L
 #define _GNU_SOURCE 1
 
