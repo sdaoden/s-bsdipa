@@ -700,7 +700,7 @@ do{\
 	/* Create hashes for lines in "after"; create hashmap of lines {{{ */
 	xdat = dcp->dc_after_dat;
 	xlen = (s_bsdipa_off_t)dcp->dc_after_len;
-	if(xlen > 0 && dcp->dc_before_len > 0){
+	if(xlen > 0){
 		s_bsdipa_off_t cnt, ll;
 		uint8_t const *beg, *end;
 		struct a_l *alp, *lp;
@@ -794,6 +794,7 @@ do{\
 
 	rv = s_BSDIPA_FBIG;
 
+	/* Diff creation {{{ */
 	/* C99 */{
 		struct a_l *alp;
 		s_bsdipa_off_t extral, diffl, aabspos;
@@ -929,7 +930,7 @@ do{\
 
 		dcp->dc_is_equal_data = !isneq;
 		dcp->dc_diff_dat = diffp;
-	}
+	} /* }}} */
 
 	rv = s_BSDIPA_OK;
 jleave:
