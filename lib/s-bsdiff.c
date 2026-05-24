@@ -812,7 +812,7 @@ do{\
 		diffp = dcp->dc_diff_dat;
 		aabspos = extral = diffl = 0;
 
-		/* If we have "before" data, differential data is possible */
+		/* Walk over "before" data */
 		for(alp = NULL; xlen > 0;){
 			s_bsdipa_off_t ll;
 			uint8_t const *beg, *end;
@@ -875,7 +875,7 @@ do{\
 						p = (s_bsdipa_off_t)(&alp->l_dat[0] - dcp->dc_after_dat);
 
 						/* If we already had seen diff/extra in this ctrl chunk, dump first */
-						if(!ctrl.c_need_dump || (diffl | extral) != 0){
+						if((diffl | extral) != 0 || (!ctrl.c_need_dump && p != aabspos)){
 							rv = a_bsdiff_xout_ctrl(dcp, &ctrl, diffl, extral);
 							if(rv != s_BSDIPA_OK)
 								goto jleave;
