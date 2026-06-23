@@ -68,7 +68,7 @@ WriteMakefile(
 	#'DISTNAME' => 'S-BsDiPa',
 	'VERSION' => $VERSION,
 	(
-		ABSTRACT => 'Create or apply binary difference patch',
+		ABSTRACT => 'Create or apply difference patch',
 		AUTHOR => $CONTACT,
 		LICENSE => 'open_source'
 	),

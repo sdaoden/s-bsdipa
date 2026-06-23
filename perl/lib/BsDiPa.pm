@@ -1,4 +1,4 @@
-#@ (S-)bsdipa - create or apply binary difference patch.
+#@ (S-)bsdipa - create or apply difference patch.
 package BsDiPa;
 
 use diagnostics -verbose;
@@ -14,7 +14,7 @@ __END__
 
 =head1 NAME
 
-S-bsdipa -- create or apply binary difference patch
+S-bsdipa -- create or apply difference patch
 
 =head1 SYNOPSIS
 
@@ -74,7 +74,7 @@ S-bsdipa -- create or apply binary difference patch
 
 Colin Percival's BSDiff, imported from FreeBSD and transformed into
 a library; please see header comment of lib/s-bsdipa-lib.h for more:
-create or apply binary difference patch.
+create or apply difference patch.
 The perl package only uses C<s_BSDIPA_32> mode (31-bit size limits),
 and always uses the (integrated) libdivsufsort optimization.
 It always enables the special C<s_BSDIPA_TEXT> text data processing mode
@@ -148,8 +148,7 @@ next weaker).
 
 =item C<core_diff_zlib($before_sv, $after_sv, $patch_sv, $magic_window=0, $is_equal_data=0, $io_cookie=0)>
 
-Create a compressed binary diff
-from the memory backing C<$before_sv>
+Create a compressed diff from the memory backing C<$before_sv>
 to the memory backing C<$after_sv>,
 and place the result in the (de-)reference(d) C<$patch_sv>.
 On error C<undef> is stored if at least C<$patch_sv> is accessible.
@@ -192,8 +191,7 @@ or as a foundation for other compression methods.
 
 =item C<core_patch_zlib($after_sv, $patch_sv, $before_sv, $max_allowed_restored_len=0, $io_cookie=0)>
 
-Apply a compressed binary diff C<$patch_sv>
-to the memory backing C<$after_sv>
+Apply a compressed diff C<$patch_sv> to the memory backing C<$after_sv>
 in order to restore original content in the (de-)reference(d) C<$before_sv>.
 C<$max_allowed_restored_len> specifies the maximum allowed size of the restored
 data in bytes,

@@ -1,4 +1,4 @@
-/*@ s-bsdipa: create or apply binary difference patch.
+/*@ s-bsdipa: create or apply difference patch.
  *@ (See ../lib/ for more.)
  *
  * Copyright (c) 2024 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
@@ -792,7 +792,7 @@ jeuse:
 	rv = a_EX_USAGE;
 juse:
 	fprintf((rv == a_EX_OK ? stdout : stderr),
-		a_NAME " (" s_BSDIPA_VERSION "): create or apply binary difference patch\n"
+		a_NAME " (" s_BSDIPA_VERSION "): create or apply difference patch\n"
 		"\n"
 		"  " a_NAME a_NAME_BITS " [-fHJjRZz]     patch      after  patch restored\n"
 		"  " a_NAME a_NAME_BITS " [-fHJjRtZz1-9] diff[/WIN] before after patch\n"
@@ -804,7 +804,7 @@ juse:
 		"\n"
 		"-1  (weakest) to -9 (strongest) selects compression level (or is ignored)\n"
 		"-f  overwrite an existing target file\n"
-		"-H  do not read/write file identity header; one of -[JjRZz] must be set\n"
+		"-H  do not read/write file identity header; one of -[JjRZz] must be set;\n"
 		"    (\"BSDIPA\" + \"32\" or \"64\" + \"/\" plus I/O type + \"/\")\n"
 		"-J  use LZMA2 compression (XZ utils, liblzma; optional: "
 #ifndef s__BSDIPA_XZ
@@ -817,7 +817,7 @@ juse:
 #endif
 			"available)\n"
 		"-R  raw, uncompressed output (no checksum; for testing)\n"
-		"-t  textual line-based not BSDiff mode (/WIN unsupported; optional: "
+		"-t  textual line-based not BSDiff (/WIN unsupported; optional: "
 #ifndef s_BSDIPA_TEXT
 			"NOT "
 #endif

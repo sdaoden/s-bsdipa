@@ -1,5 +1,5 @@
 /*@ s-bsdipa-lib: port of Colin Percival's BSDiff(/bspatch) to a library.
- *@ BSDiff: create or apply binary difference patch.
+ *@ BSDiff: create or apply difference patch.
  *@
  *@ Remarks:
  *@ - If s_BSDIPA_32 is defined, 31-bit instead of 63-bit limits.

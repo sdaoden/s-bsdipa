@@ -3,7 +3,7 @@ s-bsdipa, a mutation of BSDiff
 
 Colin Percival's BSDiff, imported from FreeBSD and transformed into
 a library; please see header comment of c-lib/s-bsdipa-lib.h for more:
-create or apply binary difference patch.
+create or apply difference patch.
 
 For libbz2 (BZIP2), liblzma (XZ), and libzstd (ZSTD) support the
 according (headers and) library must be available at compile time.
