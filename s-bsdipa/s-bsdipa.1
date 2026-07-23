@@ -1,6 +1,6 @@
 .\"@ s-bsdipa - create or apply difference patch.
 .
-.Dd June 23, 2026
+.Dd July 23, 2026
 .ds VV \\%v0.10.0
 .ds XX \\%S-BSDIPA
 .ds Xx \\%S-bsdipa
@@ -73,13 +73,13 @@ allows specification of the
 .Dq data inspection window size ,
 a positive integral value \[<=]4096 that defaults to 16,
 and has impacts on processing speed and patch size.
-(Values outside the range 4 to 64 seem hardly useful.)
+(Values outside the range 4 to 64 hardly seem useful.)
 .
 .Ss "Options"
 .
 .Bl -tag -compact -width ".It Fl BaNg"
 .It Fl 1 Ns \0\(em Fl 9
-Selects the compression level when supported,
+Selects a compression level where supported,
 with 1 being weakest and 9 being strongest (default unless noted).
 .It Fl f
 Overwrite an existing target file.
